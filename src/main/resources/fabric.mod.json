@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "siftweapons",
+  "version": "${version}",
+  "name": "Sift Weapons (Server-Side)",
+  "description": "Server-only Freshlol style 14-level Spear/Mace progression + God items with limits. Clients need nothing.",
+  "authors": ["Grok"],
+  "license": "MIT",
+  "environment": "server",
+  "entrypoints": {
+    "main": ["com.freshlol.siftweapons.SiftWeaponsMod"]
+  },
+  "depends": {
+    "fabricloader": ">=0.20.1",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
