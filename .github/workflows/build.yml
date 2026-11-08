@@ -21,7 +21,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.12'
+          gradle-version: '9.7.1'
 
       - name: Build with Gradle
         run: |
@@ -34,15 +34,12 @@ jobs:
           cat gradle.properties
           echo "=== build.gradle ==="
           cat build.gradle
-          echo "=== settings.gradle ==="
-          cat settings.gradle
           echo "=== Starting build ==="
           gradle build --no-daemon --stacktrace 2>&1 | tee build.log
           echo "Exit: ${PIPESTATUS[0]}"
           echo "=== tail of log ==="
-          tail -60 build.log
+          tail -80 build.log
           find build -name "*.jar" 2>/dev/null || true
-          # Force the step to show the log even on failure
           if ! ls build/libs/*.jar 1>/dev/null 2>&1; then
             echo "No JAR found"
             exit 1
