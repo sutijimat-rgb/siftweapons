@@ -1,5 +1,6 @@
 package com.freshlol.siftweapons.data;
 
+import com.freshlol.siftweapons.SiftWeaponsMod;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.server.MinecraftServer;
@@ -24,7 +25,7 @@ public class WeaponState extends SavedData {
     );
 
     public static final SavedDataType<WeaponState> TYPE = new SavedDataType<>(
-            "siftweapons_state",
+            SiftWeaponsMod.id("siftweapons_state"),
             WeaponState::new,
             CODEC,
             null
