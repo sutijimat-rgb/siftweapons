@@ -17,39 +17,34 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '25'
-          cache: gradle
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.12'
 
       - name: Build with Gradle
-        id: build
         run: |
           set -o pipefail
-          echo "### Project files" >> $GITHUB_STEP_SUMMARY
-          find . -type f | sort >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### gradle.properties" >> $GITHUB_STEP_SUMMARY
-          cat gradle.properties >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Running gradle build..." >> $GITHUB_STEP_SUMMARY
+          echo "Java version:"
+          java -version
+          echo "Gradle version:"
+          gradle --version
+          echo "=== gradle.properties ==="
+          cat gradle.properties
+          echo "=== build.gradle ==="
+          cat build.gradle
+          echo "=== settings.gradle ==="
+          cat settings.gradle
+          echo "=== Starting build ==="
           gradle build --no-daemon --stacktrace 2>&1 | tee build.log
-          BUILD_EXIT=${PIPESTATUS[0]}
-          echo "Gradle exit code: $BUILD_EXIT" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Last 80 lines of build log" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -80 build.log >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### build/ directory" >> $GITHUB_STEP_SUMMARY
-          find build -type f 2>/dev/null >> $GITHUB_STEP_SUMMARY || echo "No build dir" >> $GITHUB_STEP_SUMMARY
-          if [ $BUILD_EXIT -ne 0 ]; then
-            echo "::error::Gradle build failed with exit code $BUILD_EXIT"
-            exit $BUILD_EXIT
-          fi
+          echo "Exit: ${PIPESTATUS[0]}"
+          echo "=== tail of log ==="
+          tail -60 build.log
+          find build -name "*.jar" 2>/dev/null || true
+          # Force the step to show the log even on failure
           if ! ls build/libs/*.jar 1>/dev/null 2>&1; then
-            echo "::error::No JAR was produced in build/libs/"
+            echo "No JAR found"
             exit 1
           fi
 
@@ -60,7 +55,7 @@ jobs:
           name: build-log
           path: build.log
 
-      - name: Upload JAR artifact
+      - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
           name: siftweapons-jar
