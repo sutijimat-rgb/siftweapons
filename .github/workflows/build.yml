@@ -23,17 +23,36 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build with Gradle
+        id: build
         run: |
-          echo "=== Project files ==="
-          find . -type f | head -50
+          set -o pipefail
+          echo "=== Project structure ==="
+          find . -type f | sort
+          echo ""
           echo "=== gradle.properties ==="
           cat gradle.properties
+          echo ""
           echo "=== build.gradle ==="
           cat build.gradle
-          echo "=== Starting build ==="
-          gradle build --no-daemon --stacktrace --info 2>&1 | tee build.log
-          echo "=== Build exit code: $? ==="
-          ls -la build/libs/ || true
+          echo ""
+          echo "=== Running gradle build ==="
+          gradle build --no-daemon --stacktrace 2>&1 | tee build.log
+          BUILD_EXIT=${PIPESTATUS[0]}
+          echo "Gradle exit code: $BUILD_EXIT"
+          echo ""
+          echo "=== Contents of build/ ==="
+          find build -type f 2>/dev/null || echo "No build directory"
+          echo ""
+          echo "=== Last 100 lines of build.log ==="
+          tail -100 build.log
+          if [ $BUILD_EXIT -ne 0 ]; then
+            echo "Build failed"
+            exit $BUILD_EXIT
+          fi
+          if ! ls build/libs/*.jar 1>/dev/null 2>&1; then
+            echo "No JAR produced!"
+            exit 1
+          fi
 
       - name: Upload build log
         if: always()
@@ -47,4 +66,4 @@ jobs:
         with:
           name: siftweapons-jar
           path: build/libs/*.jar
-          if-no-files-found: warn
+          if-no-files-found: error
