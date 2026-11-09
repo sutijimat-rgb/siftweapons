@@ -45,8 +45,6 @@ public class SiftMaceHandler {
         Vec3 look = player.getLookAngle();
         double power = WeaponHelper.isGodMace(stack) ? 2.2 : 1.6;
         player.setDeltaMovement(look.scale(power));
-        // Force velocity update on server
-        player.hurtMarked = true;
 
         player.getCooldowns().addCooldown(stack.getItem(), 15);
 
