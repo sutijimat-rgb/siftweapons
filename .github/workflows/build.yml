@@ -26,16 +26,13 @@ jobs:
       - name: Build with Gradle
         run: |
           set -o pipefail
-          echo "=== gradle.properties ==="
-          cat gradle.properties
-          echo "=== build.gradle ==="
-          cat build.gradle
           echo "=== Starting build ==="
           gradle build --no-daemon --stacktrace 2>&1 | tee build.log
           STATUS=${PIPESTATUS[0]}
-          echo "Gradle exit: $STATUS"
-          echo "=== Last 100 lines of log ==="
-          tail -100 build.log
+          echo "### Build Log (last 150 lines)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -150 build.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
           ls -la build/libs/ || true
           if [ $STATUS -ne 0 ] || ! ls build/libs/*.jar 1>/dev/null 2>&1; then
             echo "Build failed or no JAR"
