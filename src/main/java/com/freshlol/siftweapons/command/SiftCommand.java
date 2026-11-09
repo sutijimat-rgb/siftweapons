@@ -12,9 +12,7 @@ public class SiftCommand {
         dispatcher.register(Commands.literal("sift")
                 .requires(source -> source.hasPermission(2))
                 .executes(ctx -> {
-                    ctx.getSource().sendSuccess(() -> Component.literal(
-                            "Sift Weapons OP commands: /sift help (full commands coming)")
-                    , false);
+                    ctx.getSource().sendSuccess(() -> Component.literal("Sift Weapons OP commands available"), false);
                     return 1;
                 })
         );
