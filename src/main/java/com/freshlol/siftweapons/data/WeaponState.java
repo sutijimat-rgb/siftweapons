@@ -1,48 +1,18 @@
 package com.freshlol.siftweapons.data;
 
-import com.freshlol.siftweapons.SiftWeaponsMod;
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.level.saveddata.SavedData;
-import net.minecraft.world.level.saveddata.SavedDataType;
 
-public class WeaponState extends SavedData {
+public class WeaponState {
     public static final int MAX_SIFT_MACE = 2;
     public static final int MAX_GOD_MACE = 1;
     public static final int MAX_GOD_SPEAR = 1;
 
-    private int siftMaceCount;
-    private int godMaceCount;
-    private int godSpearCount;
-
-    public static final Codec<WeaponState> CODEC = RecordCodecBuilder.create(instance ->
-            instance.group(
-                    Codec.INT.fieldOf("siftMaceCount").forGetter(s -> s.siftMaceCount),
-                    Codec.INT.fieldOf("godMaceCount").forGetter(s -> s.godMaceCount),
-                    Codec.INT.fieldOf("godSpearCount").forGetter(s -> s.godSpearCount)
-            ).apply(instance, WeaponState::new)
-    );
-
-    public static final SavedDataType<WeaponState> TYPE = new SavedDataType<>(
-            SiftWeaponsMod.id("siftweapons_state"),
-            WeaponState::new,
-            CODEC,
-            null
-    );
-
-    public WeaponState() {
-        this(0, 0, 0);
-    }
-
-    public WeaponState(int siftMaceCount, int godMaceCount, int godSpearCount) {
-        this.siftMaceCount = siftMaceCount;
-        this.godMaceCount = godMaceCount;
-        this.godSpearCount = godSpearCount;
-    }
+    private static int siftMaceCount = 0;
+    private static int godMaceCount = 0;
+    private static int godSpearCount = 0;
 
     public static WeaponState get(MinecraftServer server) {
-        return server.getDataStorage().computeIfAbsent(TYPE);
+        return new WeaponState();
     }
 
     public boolean canCreateSiftMace() {
@@ -52,7 +22,6 @@ public class WeaponState extends SavedData {
     public void incrementSiftMace() {
         if (siftMaceCount < MAX_SIFT_MACE) {
             siftMaceCount++;
-            setDirty();
         }
     }
 
@@ -67,7 +36,6 @@ public class WeaponState extends SavedData {
     public void incrementGodMace() {
         if (godMaceCount < MAX_GOD_MACE) {
             godMaceCount++;
-            setDirty();
         }
     }
 
@@ -82,7 +50,6 @@ public class WeaponState extends SavedData {
     public void incrementGodSpear() {
         if (godSpearCount < MAX_GOD_SPEAR) {
             godSpearCount++;
-            setDirty();
         }
     }
 
