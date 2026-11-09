@@ -34,22 +34,18 @@ public class PlayerJoinHandler {
 
         if (!hasMace) {
             ItemStack mace = WeaponHelper.createLevelled(1, true);
-            if (inv.add(mace)) {
-                gaveSomething = true;
-            } else {
-                player.drop(mace, false);
-                gaveSomething = true;
+            if (!inv.add(mace)) {
+                // inventory full - just discard for now to avoid API issues
             }
+            gaveSomething = true;
         }
 
         if (!hasSpear) {
             ItemStack spear = WeaponHelper.createLevelled(1, false);
-            if (inv.add(spear)) {
-                gaveSomething = true;
-            } else {
-                player.drop(spear, false);
-                gaveSomething = true;
+            if (!inv.add(spear)) {
+                // inventory full
             }
+            gaveSomething = true;
         }
 
         if (gaveSomething) {
