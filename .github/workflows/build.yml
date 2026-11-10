@@ -29,16 +29,14 @@ jobs:
           echo "=== Starting build ==="
           gradle build --no-daemon --stacktrace 2>&1 | tee build.log
           STATUS=${PIPESTATUS[0]}
-          grep -E "error:|error \[|cannot find symbol|incompatible types" build.log | head -20 | while read -r line; do
-            echo "::error::$line"
-          done
-          echo "### First errors from log" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          grep -A3 -E "error:|cannot find symbol|incompatible types|BUILD FAILED" build.log | head -50 >> $GITHUB_STEP_SUMMARY || true
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "Gradle exit status: $STATUS"
           ls -la build/libs/ || true
-          if [ $STATUS -ne 0 ] || ! ls build/libs/*.jar 1>/dev/null 2>&1; then
-            echo "Build failed or no JAR"
+          if [ $STATUS -ne 0 ]; then
+            echo "Build failed"
+            exit 1
+          fi
+          if ! ls build/libs/*.jar 1>/dev/null 2>&1; then
+            echo "No JAR found"
             exit 1
           fi
 
