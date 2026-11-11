@@ -139,7 +139,6 @@ public class SiftCommand {
                                                                 "§aSet " + target.getName().getString() + "'s main hand to Level " + level), true);
                                                         return 1;
                                                     }
-                                                    // Also try offhand
                                                     ItemStack off = target.getOffhandItem();
                                                     if (WeaponHelper.isLevelled(off) &&
                                                             ((isMace && WeaponHelper.getType(off).contains("mace")) ||
