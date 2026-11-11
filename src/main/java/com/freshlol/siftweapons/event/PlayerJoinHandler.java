@@ -13,19 +13,16 @@ public class PlayerJoinHandler {
     public static void onJoin(ServerGamePacketListenerImpl handler, PacketSender sender, MinecraftServer server) {
         ServerPlayer player = handler.player;
         WeaponState state = WeaponState.get(server);
-
         if (state.hasReceivedStarter(player.getUUID())) {
             return;
         }
-
+        // Level 1 Mace + Level 1 Wooden Spear
         ItemStack mace = WeaponHelper.createLevelled(1, true);
         ItemStack spear = WeaponHelper.createLevelled(1, false);
-
-        // Prefer inventory; if full just leave it (rare on join)
         player.getInventory().add(mace);
         player.getInventory().add(spear);
-
         state.markStarterGiven(player.getUUID());
-        player.sendSystemMessage(Component.literal("§a[Sift Weapons] You received Level 1 Mace and Level 1 Spear!"));
+        player.sendSystemMessage(Component.literal("§a[Sift Weapons] You received Level 1 Mace and Level 1 Wooden Spear!"));
+        player.sendSystemMessage(Component.literal("§7Kill players while holding them to upgrade. Spears change material!"));
     }
 }

@@ -1,27 +1,18 @@
 package com.freshlol.siftweapons.data;
 
-import net.minecraft.server.MinecraftServer;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import net.minecraft.server.MinecraftServer;
 
-/**
- * Server-wide limits for special weapons.
- * Simple in-memory for reliability across Minecraft 26.3 API changes.
- * Counts reset on server restart or via /sift reset.
- */
 public class WeaponState {
     public static final int MAX_SIFT_MACE = 2;
     public static final int MAX_GOD_MACE = 1;
     public static final int MAX_GOD_SPEAR = 1;
-
     private static final Map<UUID, Boolean> firstJoinGiven = new HashMap<>();
-
     private int siftMaceCount = 0;
     private int godMaceCount = 0;
     private int godSpearCount = 0;
-
     private static WeaponState INSTANCE = new WeaponState();
 
     public static WeaponState get(MinecraftServer server) {
@@ -29,39 +20,39 @@ public class WeaponState {
     }
 
     public boolean canCreateSiftMace() {
-        return siftMaceCount < MAX_SIFT_MACE;
+        return this.siftMaceCount < 2;
     }
 
     public void incrementSiftMace() {
-        siftMaceCount++;
+        ++this.siftMaceCount;
     }
 
     public int getSiftMaceCount() {
-        return siftMaceCount;
+        return this.siftMaceCount;
     }
 
     public boolean canCreateGodMace() {
-        return godMaceCount < MAX_GOD_MACE;
+        return this.godMaceCount < 1;
     }
 
     public void incrementGodMace() {
-        godMaceCount++;
+        ++this.godMaceCount;
     }
 
     public int getGodMaceCount() {
-        return godMaceCount;
+        return this.godMaceCount;
     }
 
     public boolean canCreateGodSpear() {
-        return godSpearCount < MAX_GOD_SPEAR;
+        return this.godSpearCount < 1;
     }
 
     public void incrementGodSpear() {
-        godSpearCount++;
+        ++this.godSpearCount;
     }
 
     public int getGodSpearCount() {
-        return godSpearCount;
+        return this.godSpearCount;
     }
 
     public boolean hasReceivedStarter(UUID playerId) {
@@ -72,27 +63,23 @@ public class WeaponState {
         firstJoinGiven.put(playerId, true);
     }
 
-    /** Reset all limits and first-join tracking. */
     public void resetAll() {
-        siftMaceCount = 0;
-        godMaceCount = 0;
-        godSpearCount = 0;
+        this.siftMaceCount = 0;
+        this.godMaceCount = 0;
+        this.godSpearCount = 0;
         firstJoinGiven.clear();
     }
 
-    /** Reset only special weapon counts (keeps first-join flags). */
     public void resetCounts() {
-        siftMaceCount = 0;
-        godMaceCount = 0;
-        godSpearCount = 0;
+        this.siftMaceCount = 0;
+        this.godMaceCount = 0;
+        this.godSpearCount = 0;
     }
 
-    /** Reset only first-join tracking (keeps weapon counts). */
     public void resetJoins() {
         firstJoinGiven.clear();
     }
 
-    /** Clear first-join flag for one player so they get starters again. */
     public void resetPlayer(UUID playerId) {
         firstJoinGiven.remove(playerId);
     }
