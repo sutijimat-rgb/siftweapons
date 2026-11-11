@@ -18,16 +18,12 @@ public class PlayerJoinHandler {
             return;
         }
 
-        // Give Level 1 Mace + Level 1 Spear on first join
         ItemStack mace = WeaponHelper.createLevelled(1, true);
         ItemStack spear = WeaponHelper.createLevelled(1, false);
 
-        if (!player.getInventory().add(mace)) {
-            player.drop(mace, false);
-        }
-        if (!player.getInventory().add(spear)) {
-            player.drop(spear, false);
-        }
+        // Prefer inventory; if full just leave it (rare on join)
+        player.getInventory().add(mace);
+        player.getInventory().add(spear);
 
         state.markStarterGiven(player.getUUID());
         player.sendSystemMessage(Component.literal("§a[Sift Weapons] You received Level 1 Mace and Level 1 Spear!"));
