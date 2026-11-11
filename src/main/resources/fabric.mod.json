@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "id": "siftweapons",
-  "version": "${version}",
+  "version": "2.2.0",
   "name": "Sift Weapons (Server-Side)",
-  "description": "Server-only Freshlol style 14-level Spear/Mace progression + God items with limits. Clients need nothing.",
+  "description": "Server-only 14-level Spear/Mace progression. Player kills only. Spears change material. Rainbow Mace at level 10+. Special abilities by level.",
   "authors": ["Grok"],
   "license": "MIT",
   "environment": "server",

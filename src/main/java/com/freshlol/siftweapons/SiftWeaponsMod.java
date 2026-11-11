@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 
 public class SiftWeaponsMod implements ModInitializer {
     public static final String MOD_ID = "siftweapons";
-    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    public static final Logger LOGGER = LoggerFactory.getLogger("siftweapons");
 
     public static Identifier id(String path) {
         return Identifier.fromNamespaceAndPath(MOD_ID, path);
@@ -23,12 +23,10 @@ public class SiftWeaponsMod implements ModInitializer {
     @Override
     public void onInitialize() {
         LOGGER.info("Sift Weapons (SERVER-ONLY) loading...");
-
         CommandRegistrationCallback.EVENT.register(SiftCommand::register);
         ServerPlayConnectionEvents.JOIN.register(PlayerJoinHandler::onJoin);
         ServerLivingEntityEvents.AFTER_DEATH.register(KillUpgradeHandler::onDeath);
         SiftMaceHandler.register();
-
-        LOGGER.info("Sift Weapons initialized.");
+        LOGGER.info("Sift Weapons initialized. Player kills only. Rainbow Mace at lvl 10+.");
     }
 }
