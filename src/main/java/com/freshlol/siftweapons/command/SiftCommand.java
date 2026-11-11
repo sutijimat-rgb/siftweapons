@@ -2,6 +2,9 @@ package com.freshlol.siftweapons.command;
 
 import com.freshlol.siftweapons.data.WeaponState;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.ArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -12,61 +15,33 @@ import net.minecraft.server.permissions.Permissions;
 
 public class SiftCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext registry, Commands.CommandSelection selection) {
-        dispatcher.register(Commands.literal("sift")
-                .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
-                .executes(ctx -> {
-                    ctx.getSource().sendSuccess(() -> Component.literal("§e/sift help §7| §e/sift info §7| §e/sift reset"), false);
-                    return 1;
-                })
-                .then(Commands.literal("help")
-                        .executes(ctx -> {
-                            ctx.getSource().sendSuccess(() -> Component.literal(
-                                    "§6=== Sift Weapons ===\n" +
-                                    "§e/sift info §7- show limits\n" +
-                                    "§e/sift reset §7- reset all (counts + joins)\n" +
-                                    "§e/sift reset counts §7- reset weapon limits only\n" +
-                                    "§e/sift reset joins §7- reset first-join flags\n" +
-                                    "§e/sift reset player <name> §7- let one player get starters again"
-                            ), false);
-                            return 1;
-                        }))
-                .then(Commands.literal("info")
-                        .executes(ctx -> {
-                            WeaponState s = WeaponState.get(ctx.getSource().getServer());
-                            ctx.getSource().sendSuccess(() -> Component.literal(
-                                    "§6Sift Mace: §f" + s.getSiftMaceCount() + "/" + WeaponState.MAX_SIFT_MACE +
-                                    "  §dGod Mace: §f" + s.getGodMaceCount() + "/" + WeaponState.MAX_GOD_MACE +
-                                    "  §6God Spear: §f" + s.getGodSpearCount() + "/" + WeaponState.MAX_GOD_SPEAR
-                            ), false);
-                            return 1;
-                        }))
-                .then(Commands.literal("reset")
-                        .executes(ctx -> {
-                            WeaponState.get(ctx.getSource().getServer()).resetAll();
-                            ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Full reset done (counts + first-join flags)."), true);
-                            return 1;
-                        })
-                        .then(Commands.literal("counts")
-                                .executes(ctx -> {
-                                    WeaponState.get(ctx.getSource().getServer()).resetCounts();
-                                    ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Weapon counts reset."), true);
-                                    return 1;
-                                }))
-                        .then(Commands.literal("joins")
-                                .executes(ctx -> {
-                                    WeaponState.get(ctx.getSource().getServer()).resetJoins();
-                                    ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] First-join flags cleared. Players can get starters again."), true);
-                                    return 1;
-                                }))
-                        .then(Commands.literal("player")
-                                .then(Commands.argument("target", EntityArgument.player())
-                                        .executes(ctx -> {
-                                            ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
-                                            WeaponState.get(ctx.getSource().getServer()).resetPlayer(target.getUUID());
-                                            ctx.getSource().sendSuccess(() -> Component.literal(
-                                                    "§a[Sift] Reset first-join for " + target.getName().getString() + ". They get starters next join."), true);
-                                            return 1;
-                                        }))))
-        );
+        dispatcher.register((LiteralArgumentBuilder)((LiteralArgumentBuilder)((LiteralArgumentBuilder)((LiteralArgumentBuilder)((LiteralArgumentBuilder)Commands.literal((String)"sift").requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))).executes(ctx -> {
+            ((CommandSourceStack)ctx.getSource()).sendSuccess(() -> Component.literal((String)"\u00a7e/sift help \u00a77| \u00a7e/sift info \u00a77| \u00a7e/sift reset"), false);
+            return 1;
+        })).then(Commands.literal((String)"help").executes(ctx -> {
+            ((CommandSourceStack)ctx.getSource()).sendSuccess(() -> Component.literal((String)"\u00a76=== Sift Weapons ===\n\u00a7e/sift info \u00a77- show limits\n\u00a7e/sift reset \u00a77- reset all (counts + joins)\n\u00a7e/sift reset counts \u00a77- reset weapon limits only\n\u00a7e/sift reset joins \u00a77- reset first-join flags\n\u00a7e/sift reset player <name> \u00a77- let one player get starters again"), false);
+            return 1;
+        }))).then(Commands.literal((String)"info").executes(ctx -> {
+            WeaponState s = WeaponState.get(((CommandSourceStack)ctx.getSource()).getServer());
+            ((CommandSourceStack)ctx.getSource()).sendSuccess(() -> Component.literal((String)("\u00a76Sift Mace: \u00a7f" + s.getSiftMaceCount() + "/2  \u00a7dGod Mace: \u00a7f" + s.getGodMaceCount() + "/1  \u00a76God Spear: \u00a7f" + s.getGodSpearCount() + "/1")), false);
+            return 1;
+        }))).then(((LiteralArgumentBuilder)((LiteralArgumentBuilder)((LiteralArgumentBuilder)Commands.literal((String)"reset").executes(ctx -> {
+            WeaponState.get(((CommandSourceStack)ctx.getSource()).getServer()).resetAll();
+            ((CommandSourceStack)ctx.getSource()).sendSuccess(() -> Component.literal((String)"\u00a7a[Sift] Full reset done (counts + first-join flags)."), true);
+            return 1;
+        })).then(Commands.literal((String)"counts").executes(ctx -> {
+            WeaponState.get(((CommandSourceStack)ctx.getSource()).getServer()).resetCounts();
+            ((CommandSourceStack)ctx.getSource()).sendSuccess(() -> Component.literal((String)"\u00a7a[Sift] Weapon counts reset."), true);
+            return 1;
+        }))).then(Commands.literal((String)"joins").executes(ctx -> {
+            WeaponState.get(((CommandSourceStack)ctx.getSource()).getServer()).resetJoins();
+            ((CommandSourceStack)ctx.getSource()).sendSuccess(() -> Component.literal((String)"\u00a7a[Sift] First-join flags cleared. Players can get starters again."), true);
+            return 1;
+        }))).then(Commands.literal((String)"player").then(Commands.argument((String)"target", (ArgumentType)EntityArgument.player()).executes(ctx -> {
+            ServerPlayer target = EntityArgument.getPlayer((CommandContext)ctx, (String)"target");
+            WeaponState.get(((CommandSourceStack)ctx.getSource()).getServer()).resetPlayer(target.getUUID());
+            ((CommandSourceStack)ctx.getSource()).sendSuccess(() -> Component.literal((String)("\u00a7a[Sift] Reset first-join for " + target.getName().getString() + ". They get starters next join.")), true);
+            return 1;
+        })))));
     }
 }
