@@ -20,10 +20,9 @@ import java.util.UUID;
 
 public class SiftMaceHandler {
     private static final Map<UUID, Long> lastDash = new HashMap<>();
-    private static final long DASH_COOLDOWN_MS = 3000; // 3 seconds
+    private static final long DASH_COOLDOWN_MS = 3000;
 
     public static void register() {
-        // Right-click dash for Sift Mace / God Mace
         UseItemCallback.EVENT.register((Player player, Level world, InteractionHand hand) -> {
             if (world.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
                 return InteractionResult.PASS;
@@ -42,25 +41,24 @@ public class SiftMaceHandler {
                 return InteractionResult.FAIL;
             }
 
-            // Dash forward
             Vec3 look = player.getLookAngle();
             double power = WeaponHelper.isGodMace(stack) ? 2.2 : 1.6;
             player.setDeltaMovement(look.x * power, Math.max(0.35, look.y * power * 0.6), look.z * power);
-            player.hurtMarked = true;
+            // hasImpulse helps clients receive the velocity change
+            player.hasImpulse = true;
 
             lastDash.put(player.getUUID(), now);
             serverPlayer.sendSystemMessage(Component.literal("§bDash!"));
             return InteractionResult.SUCCESS;
         });
 
-        // Passive Strength III + Speed III while holding special maces
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 ItemStack main = player.getMainHandItem();
                 if (WeaponHelper.isSpecialMace(main)) {
-                    // Strength III (amplifier 2), Speed III (amplifier 2), short duration, no particles
-                    player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 40, 2, false, false, true));
-                    player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 40, 2, false, false, true));
+                    // Strength III + Speed III
+                    player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 40, 2, false, false, true));
+                    player.addEffect(new MobEffectInstance(MobEffects.SPEED, 40, 2, false, false, true));
                 }
             }
         });
