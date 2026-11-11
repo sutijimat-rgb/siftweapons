@@ -5,8 +5,6 @@ import com.freshlol.siftweapons.util.WeaponHelper;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
-import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -18,19 +16,20 @@ import net.minecraft.world.item.ItemStack;
 
 public class SiftCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext registry, Commands.CommandSelection selection) {
-        dispatcher.register(
-            Commands.literal("sift")
-                .requires(s -> s.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
-                .executes(ctx -> { ctx.getSource().sendSuccess(() -> Component.literal("/sift help"), false); return 1; })
-                .then(Commands.literal("help").executes(ctx -> {
+        dispatcher.register(Commands.literal("sift")
+            .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
+            .executes(ctx -> {
+                ctx.getSource().sendSuccess(() -> Component.literal("Sift Weapons - use /sift help"), false);
+                return 1;
+            })
+            .then(Commands.literal("help")
+                .executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(
-                        "/sift give <player> levelled <mace|spear> <1-14>\n" +
-                        "/sift give <player> siftmace|godmace|godspear\n" +
-                        "/sift setlevel <player> <mace|spear> <1-14>\n" +
-                        "/sift info"), false);
+                        "Commands: help, info, give, setlevel"), false);
                     return 1;
                 }))
-                .then(Commands.literal("info").executes(ctx -> {
+            .then(Commands.literal("info")
+                .executes(ctx -> {
                     WeaponState s = WeaponState.get(ctx.getSource().getServer());
                     ctx.getSource().sendSuccess(() -> Component.literal(
                         "SiftMace " + s.getSiftMaceCount() + "/" + WeaponState.MAX_SIFT_MACE +
@@ -38,79 +37,66 @@ public class SiftCommand {
                         " GodSpear " + s.getGodSpearCount() + "/" + WeaponState.MAX_GOD_SPEAR), false);
                     return 1;
                 }))
-                .then(Commands.literal("give")
-                    .then(Commands.argument("player", EntityArgument.player())
-                        .then(Commands.literal("levelled")
-                            .then(Commands.argument("type", StringArgumentType.word())
-                                .then(Commands.argument("level", IntegerArgumentType.integer(1, 14))
-                                    .executes(SiftCommand::giveLevelled))))
-                        .then(Commands.literal("siftmace").executes(c -> giveSpecial(c, "siftmace")))
-                        .then(Commands.literal("godmace").executes(c -> giveSpecial(c, "godmace")))
-                        .then(Commands.literal("godspear").executes(c -> giveSpecial(c, "godspear")))))
-                .then(Commands.literal("setlevel")
-                    .then(Commands.argument("player", EntityArgument.player())
+            .then(Commands.literal("give")
+                .then(Commands.argument("player", EntityArgument.player())
+                    .then(Commands.literal("siftmace")
+                        .executes(ctx -> {
+                            ServerPlayer p = EntityArgument.getPlayer(ctx, "player");
+                            WeaponState s = WeaponState.get(ctx.getSource().getServer());
+                            if (!s.canCreateSiftMace()) {
+                                ctx.getSource().sendFailure(Component.literal("Limit reached"));
+                                return 0;
+                            }
+                            ItemStack stack = WeaponHelper.createSiftMace();
+                            if (!p.getInventory().add(stack)) p.drop(stack, false);
+                            s.incrementSiftMace();
+                            ctx.getSource().sendSuccess(() -> Component.literal("Gave Sift Mace"), true);
+                            return 1;
+                        }))
+                    .then(Commands.literal("godmace")
+                        .executes(ctx -> {
+                            ServerPlayer p = EntityArgument.getPlayer(ctx, "player");
+                            WeaponState s = WeaponState.get(ctx.getSource().getServer());
+                            if (!s.canCreateGodMace()) {
+                                ctx.getSource().sendFailure(Component.literal("Limit reached"));
+                                return 0;
+                            }
+                            ItemStack stack = WeaponHelper.createGodMace();
+                            if (!p.getInventory().add(stack)) p.drop(stack, false);
+                            s.incrementGodMace();
+                            ctx.getSource().sendSuccess(() -> Component.literal("Gave God Mace"), true);
+                            return 1;
+                        }))
+                    .then(Commands.literal("godspear")
+                        .executes(ctx -> {
+                            ServerPlayer p = EntityArgument.getPlayer(ctx, "player");
+                            WeaponState s = WeaponState.get(ctx.getSource().getServer());
+                            if (!s.canCreateGodSpear()) {
+                                ctx.getSource().sendFailure(Component.literal("Limit reached"));
+                                return 0;
+                            }
+                            ItemStack stack = WeaponHelper.createGodSpear();
+                            if (!p.getInventory().add(stack)) p.drop(stack, false);
+                            s.incrementGodSpear();
+                            ctx.getSource().sendSuccess(() -> Component.literal("Gave God Spear"), true);
+                            return 1;
+                        }))
+                    .then(Commands.literal("levelled")
                         .then(Commands.argument("type", StringArgumentType.word())
                             .then(Commands.argument("level", IntegerArgumentType.integer(1, 14))
-                                .executes(SiftCommand::setLevel)))))
-        );
-    }
-
-    private static int giveLevelled(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
-        String type = StringArgumentType.getString(ctx, "type").toLowerCase();
-        int level = IntegerArgumentType.getInteger(ctx, "level");
-        boolean isMace = "mace".equals(type);
-        if (!isMace && !"spear".equals(type)) {
-            ctx.getSource().sendFailure(Component.literal("Type must be mace or spear"));
-            return 0;
-        }
-        ItemStack stack = WeaponHelper.createLevelled(level, isMace);
-        if (!target.getInventory().add(stack)) target.drop(stack, false);
-        ctx.getSource().sendSuccess(() -> Component.literal("Gave Level " + level + (isMace ? " Mace" : " Spear") + " to " + target.getName().getString()), true);
-        return 1;
-    }
-
-    private static int giveSpecial(CommandContext<CommandSourceStack> ctx, String kind) throws CommandSyntaxException {
-        ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
-        WeaponState state = WeaponState.get(ctx.getSource().getServer());
-        ItemStack stack;
-        if ("siftmace".equals(kind)) {
-            if (!state.canCreateSiftMace()) { ctx.getSource().sendFailure(Component.literal("Sift Mace limit")); return 0; }
-            stack = WeaponHelper.createSiftMace(); state.incrementSiftMace();
-        } else if ("godmace".equals(kind)) {
-            if (!state.canCreateGodMace()) { ctx.getSource().sendFailure(Component.literal("God Mace limit")); return 0; }
-            stack = WeaponHelper.createGodMace(); state.incrementGodMace();
-        } else {
-            if (!state.canCreateGodSpear()) { ctx.getSource().sendFailure(Component.literal("God Spear limit")); return 0; }
-            stack = WeaponHelper.createGodSpear(); state.incrementGodSpear();
-        }
-        if (!target.getInventory().add(stack)) target.drop(stack, false);
-        ctx.getSource().sendSuccess(() -> Component.literal("Gave " + kind + " to " + target.getName().getString()), true);
-        return 1;
-    }
-
-    private static int setLevel(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
-        String type = StringArgumentType.getString(ctx, "type").toLowerCase();
-        int level = IntegerArgumentType.getInteger(ctx, "level");
-        boolean isMace = "mace".equals(type);
-        if (!isMace && !"spear".equals(type)) {
-            ctx.getSource().sendFailure(Component.literal("Type must be mace or spear"));
-            return 0;
-        }
-        ItemStack main = target.getMainHandItem();
-        if (WeaponHelper.isLevelled(main) && ((isMace && WeaponHelper.getType(main).contains("mace")) || (!isMace && WeaponHelper.getType(main).contains("spear")))) {
-            WeaponHelper.setLevel(main, level);
-            ctx.getSource().sendSuccess(() -> Component.literal("Set main hand Level " + level), true);
-            return 1;
-        }
-        ItemStack off = target.getOffhandItem();
-        if (WeaponHelper.isLevelled(off) && ((isMace && WeaponHelper.getType(off).contains("mace")) || (!isMace && WeaponHelper.getType(off).contains("spear")))) {
-            WeaponHelper.setLevel(off, level);
-            ctx.getSource().sendSuccess(() -> Component.literal("Set offhand Level " + level), true);
-            return 1;
-        }
-        ctx.getSource().sendFailure(Component.literal("No matching levelled weapon"));
-        return 0;
+                                .executes(ctx -> {
+                                    ServerPlayer p = EntityArgument.getPlayer(ctx, "player");
+                                    String type = StringArgumentType.getString(ctx, "type").toLowerCase();
+                                    int level = IntegerArgumentType.getInteger(ctx, "level");
+                                    boolean isMace = "mace".equals(type);
+                                    if (!isMace && !"spear".equals(type)) {
+                                        ctx.getSource().sendFailure(Component.literal("mace or spear"));
+                                        return 0;
+                                    }
+                                    ItemStack stack = WeaponHelper.createLevelled(level, isMace);
+                                    if (!p.getInventory().add(stack)) p.drop(stack, false);
+                                    ctx.getSource().sendSuccess(() -> Component.literal("Gave Level " + level), true);
+                                    return 1;
+                                })))))));
     }
 }
