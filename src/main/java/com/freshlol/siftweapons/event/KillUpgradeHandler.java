@@ -2,34 +2,61 @@ package com.freshlol.siftweapons.event;
 
 import com.freshlol.siftweapons.util.WeaponHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 public class KillUpgradeHandler {
     public static void onDeath(LivingEntity entity, DamageSource source) {
-        // Only care about player kills
         if (!(source.getEntity() instanceof ServerPlayer killer)) {
             return;
         }
 
         ItemStack main = killer.getMainHandItem();
-        if (!WeaponHelper.isLevelled(main)) {
-            return;
+
+        // Levelled mace OR spear upgrade on kill
+        if (WeaponHelper.isLevelled(main)) {
+            int current = WeaponHelper.getLevel(main);
+            if (current < WeaponHelper.MAX_LEVEL) {
+                int next = current + 1;
+                WeaponHelper.setLevel(main, next);
+                boolean mace = WeaponHelper.getType(main).contains("mace");
+                killer.sendSystemMessage(Component.literal(
+                        "§b[Sift] Your Level " + current + (mace ? " Mace" : " Spear") +
+                        " upgraded to §eLevel " + next + "§b!"));
+                if (next == WeaponHelper.MAX_LEVEL) {
+                    killer.sendSystemMessage(Component.literal("§6§lMAX LEVEL reached!"));
+                }
+            }
         }
 
-        int current = WeaponHelper.getLevel(main);
-        if (current >= WeaponHelper.MAX_LEVEL) {
-            return;
+        // God Mace: shockwave knockback nearby mobs
+        if (WeaponHelper.isGodMace(main) && killer.level() instanceof ServerLevel serverLevel) {
+            Vec3 pos = entity.position();
+            AABB box = new AABB(pos.x - 4, pos.y - 2, pos.z - 4, pos.x + 4, pos.y + 3, pos.z + 4);
+            for (LivingEntity nearby : serverLevel.getEntitiesOfClass(LivingEntity.class, box)) {
+                if (nearby == killer || nearby == entity || !nearby.isAlive()) continue;
+                Vec3 away = nearby.position().subtract(pos).normalize().scale(1.4).add(0, 0.45, 0);
+                nearby.setDeltaMovement(nearby.getDeltaMovement().add(away));
+            }
+            killer.sendSystemMessage(Component.literal("§dGod Mace shockwave!"));
         }
 
-        int next = current + 1;
-        WeaponHelper.setLevel(main, next);
-
-        killer.sendSystemMessage(Component.literal(
-                "§b[Sift Weapons] Your " + (WeaponHelper.getType(main).contains("mace") ? "Mace" : "Spear") +
-                " upgraded to Level " + next + "!"));
+        // God Spear: lightning on the killed target
+        if (WeaponHelper.isGodSpear(main) && killer.level() instanceof ServerLevel serverLevel) {
+            LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(serverLevel, null);
+            if (bolt != null) {
+                bolt.moveTo(entity.getX(), entity.getY(), entity.getZ());
+                bolt.setVisualOnly(true); // no fire / extra damage spam
+                serverLevel.addFreshEntity(bolt);
+            }
+            killer.sendSystemMessage(Component.literal("§6God Spear lightning!"));
+        }
     }
 }
