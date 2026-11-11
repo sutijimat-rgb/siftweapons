@@ -44,8 +44,6 @@ public class SiftMaceHandler {
             Vec3 look = player.getLookAngle();
             double power = WeaponHelper.isGodMace(stack) ? 2.2 : 1.6;
             player.setDeltaMovement(look.x * power, Math.max(0.35, look.y * power * 0.6), look.z * power);
-            // hasImpulse helps clients receive the velocity change
-            player.hasImpulse = true;
 
             lastDash.put(player.getUUID(), now);
             serverPlayer.sendSystemMessage(Component.literal("§bDash!"));
@@ -56,7 +54,6 @@ public class SiftMaceHandler {
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 ItemStack main = player.getMainHandItem();
                 if (WeaponHelper.isSpecialMace(main)) {
-                    // Strength III + Speed III
                     player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 40, 2, false, false, true));
                     player.addEffect(new MobEffectInstance(MobEffects.SPEED, 40, 2, false, false, true));
                 }
