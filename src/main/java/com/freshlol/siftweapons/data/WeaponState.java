@@ -9,7 +9,7 @@ import java.util.UUID;
 /**
  * Server-wide limits for special weapons.
  * Simple in-memory for reliability across Minecraft 26.3 API changes.
- * Counts reset on server restart (can be upgraded to PersistentState later).
+ * Counts reset on server restart or via /sift reset.
  */
 public class WeaponState {
     public static final int MAX_SIFT_MACE = 2;
@@ -70,5 +70,30 @@ public class WeaponState {
 
     public void markStarterGiven(UUID playerId) {
         firstJoinGiven.put(playerId, true);
+    }
+
+    /** Reset all limits and first-join tracking. */
+    public void resetAll() {
+        siftMaceCount = 0;
+        godMaceCount = 0;
+        godSpearCount = 0;
+        firstJoinGiven.clear();
+    }
+
+    /** Reset only special weapon counts (keeps first-join flags). */
+    public void resetCounts() {
+        siftMaceCount = 0;
+        godMaceCount = 0;
+        godSpearCount = 0;
+    }
+
+    /** Reset only first-join tracking (keeps weapon counts). */
+    public void resetJoins() {
+        firstJoinGiven.clear();
+    }
+
+    /** Clear first-join flag for one player so they get starters again. */
+    public void resetPlayer(UUID playerId) {
+        firstJoinGiven.remove(playerId);
     }
 }
