@@ -80,14 +80,28 @@ public class WeaponHelper {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         if (data == null) return 0;
         CompoundTag tag = data.copyTag();
-        return tag.contains(KEY_LEVEL) ? tag.getInt(KEY_LEVEL) : 0;
+        if (tag.contains(KEY_LEVEL)) {
+            try {
+                return tag.getInt(KEY_LEVEL);
+            } catch (Exception e) {
+                return 0;
+            }
+        }
+        return 0;
     }
 
     public static String getType(ItemStack stack) {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         if (data == null) return "";
         CompoundTag tag = data.copyTag();
-        return tag.contains(KEY_TYPE) ? tag.getString(KEY_TYPE) : "";
+        if (tag.contains(KEY_TYPE)) {
+            try {
+                return tag.getString(KEY_TYPE);
+            } catch (Exception e) {
+                return "";
+            }
+        }
+        return "";
     }
 
     public static void setLevel(ItemStack stack, int level) {
@@ -97,7 +111,13 @@ public class WeaponHelper {
         tag.putInt(KEY_LEVEL, level);
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
 
-        boolean isMace = TYPE_LEVELLED_MACE.equals(tag.contains(KEY_TYPE) ? tag.getString(KEY_TYPE) : "");
+        String currentType = "";
+        if (tag.contains(KEY_TYPE)) {
+            try {
+                currentType = tag.getString(KEY_TYPE);
+            } catch (Exception ignored) {}
+        }
+        boolean isMace = TYPE_LEVELLED_MACE.equals(currentType);
         stack.set(DataComponents.CUSTOM_NAME, Component.literal("Level " + level + (isMace ? " Mace" : " Spear")).withStyle(style -> style.withItalic(false)));
     }
 }
