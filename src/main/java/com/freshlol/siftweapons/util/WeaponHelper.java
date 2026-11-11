@@ -6,6 +6,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.component.ItemLore;
+
+import java.util.List;
 
 public class WeaponHelper {
     public static final int MAX_LEVEL = 14;
@@ -23,29 +26,63 @@ public class WeaponHelper {
         level = Math.max(1, Math.min(MAX_LEVEL, level));
         ItemStack stack = new ItemStack(isMace ? Items.MACE : Items.TRIDENT);
         setTypeAndLevel(stack, isMace ? TYPE_LEVELLED_MACE : TYPE_LEVELLED_SPEAR, level);
-        stack.set(DataComponents.CUSTOM_NAME, Component.literal("Level " + level + (isMace ? " Mace" : " Spear")).withStyle(style -> style.withItalic(false)));
+        applyLevelledLook(stack, level, isMace);
         return stack;
     }
 
     public static ItemStack createSiftMace() {
         ItemStack stack = new ItemStack(Items.MACE);
         setTypeAndLevel(stack, TYPE_SIFT_MACE, 0);
-        stack.set(DataComponents.CUSTOM_NAME, Component.literal("Sift Mace").withStyle(style -> style.withItalic(false).withColor(0x55FFFF)));
+        stack.set(DataComponents.CUSTOM_NAME, Component.literal("Sift Mace").withStyle(s -> s.withItalic(false).withColor(0x55FFFF).withBold(true)));
+        stack.set(DataComponents.LORE, new ItemLore(List.of(
+                Component.literal("§bRight-click: Dash"),
+                Component.literal("§7Passive: Strength III + Speed III"),
+                Component.literal("§8Limited: 2 on server")
+        )));
         return stack;
     }
 
     public static ItemStack createGodMace() {
         ItemStack stack = new ItemStack(Items.MACE);
         setTypeAndLevel(stack, TYPE_GOD_MACE, 0);
-        stack.set(DataComponents.CUSTOM_NAME, Component.literal("God Mace").withStyle(style -> style.withItalic(false).withColor(0xFF55FF)));
+        stack.set(DataComponents.CUSTOM_NAME, Component.literal("God Mace").withStyle(s -> s.withItalic(false).withColor(0xFF55FF).withBold(true)));
+        stack.set(DataComponents.LORE, new ItemLore(List.of(
+                Component.literal("§dRight-click: Power Dash"),
+                Component.literal("§dPassive: Strength IV + Speed III + Resistance II"),
+                Component.literal("§dOn kill: Shockwave knockback"),
+                Component.literal("§8Limited: 1 on server")
+        )));
         return stack;
     }
 
     public static ItemStack createGodSpear() {
         ItemStack stack = new ItemStack(Items.TRIDENT);
         setTypeAndLevel(stack, TYPE_GOD_SPEAR, 0);
-        stack.set(DataComponents.CUSTOM_NAME, Component.literal("God Spear").withStyle(style -> style.withItalic(false).withColor(0xFFAA00)));
+        stack.set(DataComponents.CUSTOM_NAME, Component.literal("God Spear").withStyle(s -> s.withItalic(false).withColor(0xFFAA00).withBold(true)));
+        stack.set(DataComponents.LORE, new ItemLore(List.of(
+                Component.literal("§6Passive: Strength III + Speed II + Jump Boost II"),
+                Component.literal("§6On kill: Lightning strike on target"),
+                Component.literal("§8Limited: 1 on server")
+        )));
         return stack;
+    }
+
+    private static void applyLevelledLook(ItemStack stack, int level, boolean isMace) {
+        int color = levelColor(level);
+        String name = "Level " + level + (isMace ? " Mace" : " Spear");
+        stack.set(DataComponents.CUSTOM_NAME, Component.literal(name).withStyle(s -> s.withItalic(false).withColor(color)));
+        stack.set(DataComponents.LORE, new ItemLore(List.of(
+                Component.literal("§7Kill to upgrade · Max 14"),
+                Component.literal("§8Progress: " + level + "/" + MAX_LEVEL)
+        )));
+    }
+
+    private static int levelColor(int level) {
+        if (level >= 12) return 0xFF5555; // red
+        if (level >= 9) return 0xFFAA00;  // gold
+        if (level >= 6) return 0x55FF55;  // green
+        if (level >= 3) return 0x55FFFF;  // cyan
+        return 0xAAAAAA; // gray
     }
 
     private static void setTypeAndLevel(ItemStack stack, String type, int level) {
@@ -76,6 +113,10 @@ public class WeaponHelper {
         return isSiftMace(stack) || isGodMace(stack);
     }
 
+    public static boolean isGodWeapon(ItemStack stack) {
+        return isGodMace(stack) || isGodSpear(stack);
+    }
+
     public static int getLevel(ItemStack stack) {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         if (data == null) return 0;
@@ -99,6 +140,6 @@ public class WeaponHelper {
 
         String currentType = tag.getString(KEY_TYPE).orElse("");
         boolean isMace = TYPE_LEVELLED_MACE.equals(currentType);
-        stack.set(DataComponents.CUSTOM_NAME, Component.literal("Level " + level + (isMace ? " Mace" : " Spear")).withStyle(style -> style.withItalic(false)));
+        applyLevelledLook(stack, level, isMace);
     }
 }
