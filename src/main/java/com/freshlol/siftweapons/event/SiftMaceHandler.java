@@ -24,7 +24,6 @@ public class SiftMaceHandler {
     private static final long GOD_DASH_COOLDOWN_MS = 2000;
 
     public static void register() {
-        // Right-click dash for Sift Mace / God Mace
         UseItemCallback.EVENT.register((Player player, Level world, InteractionHand hand) -> {
             if (world.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
                 return InteractionResult.PASS;
@@ -55,27 +54,22 @@ public class SiftMaceHandler {
             return InteractionResult.SUCCESS;
         });
 
-        // Passives while holding special weapons
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 ItemStack main = player.getMainHandItem();
 
                 if (WeaponHelper.isGodMace(main)) {
-                    // God Mace: Strength IV, Speed III, Resistance II
                     player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 40, 3, false, false, true));
                     player.addEffect(new MobEffectInstance(MobEffects.SPEED, 40, 2, false, false, true));
                     player.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 40, 1, false, false, true));
                 } else if (WeaponHelper.isSiftMace(main)) {
-                    // Sift Mace: Strength III, Speed III
                     player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 40, 2, false, false, true));
                     player.addEffect(new MobEffectInstance(MobEffects.SPEED, 40, 2, false, false, true));
                 } else if (WeaponHelper.isGodSpear(main)) {
-                    // God Spear: Strength III, Speed II, Jump Boost II
                     player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 40, 2, false, false, true));
                     player.addEffect(new MobEffectInstance(MobEffects.SPEED, 40, 1, false, false, true));
-                    player.addEffect(new MobEffectInstance(MobEffects.JUMP, 40, 1, false, false, true));
+                    player.addEffect(new MobEffectInstance(MobEffects.JUMP_BOOST, 40, 1, false, false, true));
                 } else if (WeaponHelper.isLevelled(main)) {
-                    // Levelled weapons: small bonus scaling with level
                     int level = WeaponHelper.getLevel(main);
                     if (level >= 7) {
                         player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 40, 0, false, false, true));
