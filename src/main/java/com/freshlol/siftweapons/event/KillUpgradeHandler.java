@@ -5,9 +5,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -36,7 +36,7 @@ public class KillUpgradeHandler {
             }
         }
 
-        // God Mace: shockwave knockback nearby mobs
+        // God Mace: shockwave knockback nearby living entities
         if (WeaponHelper.isGodMace(main) && killer.level() instanceof ServerLevel serverLevel) {
             Vec3 pos = entity.position();
             AABB box = new AABB(pos.x - 4, pos.y - 2, pos.z - 4, pos.x + 4, pos.y + 3, pos.z + 4);
@@ -48,15 +48,11 @@ public class KillUpgradeHandler {
             killer.sendSystemMessage(Component.literal("§dGod Mace shockwave!"));
         }
 
-        // God Spear: lightning on the killed target
-        if (WeaponHelper.isGodSpear(main) && killer.level() instanceof ServerLevel serverLevel) {
-            LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(serverLevel, null);
-            if (bolt != null) {
-                bolt.moveTo(entity.getX(), entity.getY(), entity.getZ());
-                bolt.setVisualOnly(true); // no fire / extra damage spam
-                serverLevel.addFreshEntity(bolt);
-            }
-            killer.sendSystemMessage(Component.literal("§6God Spear lightning!"));
+        // God Spear: brief Strength boost + glow the killer as feedback
+        if (WeaponHelper.isGodSpear(main)) {
+            killer.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 60, 3, false, true, true));
+            killer.addEffect(new MobEffectInstance(MobEffects.GLOWING, 40, 0, false, true, true));
+            killer.sendSystemMessage(Component.literal("§6God Spear power surge!"));
         }
     }
 }
