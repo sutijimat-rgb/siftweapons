@@ -2,13 +2,13 @@ package com.freshlol.siftweapons.util;
 
 import java.util.List;
 import net.minecraft.core.Holder;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -70,47 +70,42 @@ public class WeaponHelper {
             setTypeAndLevel(stack, TYPE_LEVELLED_SPEAR, level);
         }
         applyLevelledLook(stack, level, isMace);
-        applyEnchantsForLevel(stack, level, isMace);
         return stack;
     }
 
-    /** Apply Curse of Vanishing + progressive enchants based on level (Freshlol style) */
-    public static void applyEnchantsForLevel(ItemStack stack, int level, boolean isMace) {
-        // Always curse of vanishing so it drops nothing on death
-        addEnchant(stack, Enchantments.VANISHING_CURSE, 1);
+    /** Call this when you have a player/server to apply proper enchants + vanishing */
+    public static void applyEnchants(ItemStack stack, int level, boolean isMace, ServerPlayer player) {
+        RegistryAccess registry = player.level().registryAccess();
+        var enchantRegistry = registry.lookupOrThrow(Registries.ENCHANTMENT);
+
+        ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(
+            stack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY)
+        );
+
+        // Always Curse of Vanishing
+        setEnchant(mutable, enchantRegistry, Enchantments.VANISHING_CURSE, 1);
 
         if (isMace) {
-            // Mace progression: Density, Breach, Unbreaking, Wind Burst
-            if (level >= 2)  addEnchant(stack, Enchantments.DENSITY, Math.min(5, 1 + (level - 2) / 2));
-            if (level >= 3)  addEnchant(stack, Enchantments.BREACH, Math.min(4, 1 + (level - 3) / 3));
-            if (level >= 4)  addEnchant(stack, Enchantments.UNBREAKING, Math.min(3, 1 + (level - 4) / 3));
-            if (level >= 6)  addEnchant(stack, Enchantments.WIND_BURST, Math.min(3, 1 + (level - 6) / 3));
-            if (level >= 8)  addEnchant(stack, Enchantments.FIRE_ASPECT, Math.min(2, 1 + (level - 8) / 4));
-            if (level >= 12) addEnchant(stack, Enchantments.MENDING, 1);
+            if (level >= 2)  setEnchant(mutable, enchantRegistry, Enchantments.DENSITY, Math.min(5, 1 + (level - 2) / 2));
+            if (level >= 3)  setEnchant(mutable, enchantRegistry, Enchantments.BREACH, Math.min(4, 1 + (level - 3) / 3));
+            if (level >= 4)  setEnchant(mutable, enchantRegistry, Enchantments.UNBREAKING, Math.min(3, 1 + (level - 4) / 3));
+            if (level >= 6)  setEnchant(mutable, enchantRegistry, Enchantments.WIND_BURST, Math.min(3, 1 + (level - 6) / 3));
+            if (level >= 8)  setEnchant(mutable, enchantRegistry, Enchantments.FIRE_ASPECT, Math.min(2, 1 + (level - 8) / 4));
+            if (level >= 12) setEnchant(mutable, enchantRegistry, Enchantments.MENDING, 1);
         } else {
-            // Spear progression: Lunge, Sharpness, Unbreaking, etc.
-            if (level >= 2)  addEnchant(stack, Enchantments.LUNGE, Math.min(3, 1 + (level - 2) / 3));
-            if (level >= 3)  addEnchant(stack, Enchantments.SHARPNESS, Math.min(5, 1 + (level - 3) / 2));
-            if (level >= 4)  addEnchant(stack, Enchantments.UNBREAKING, Math.min(3, 1 + (level - 4) / 3));
-            if (level >= 6)  addEnchant(stack, Enchantments.FIRE_ASPECT, Math.min(2, 1 + (level - 6) / 4));
-            if (level >= 8)  addEnchant(stack, Enchantments.LOOTING, Math.min(3, 1 + (level - 8) / 3));
-            if (level >= 12) addEnchant(stack, Enchantments.MENDING, 1);
+            if (level >= 2)  setEnchant(mutable, enchantRegistry, Enchantments.LUNGE, Math.min(3, 1 + (level - 2) / 3));
+            if (level >= 3)  setEnchant(mutable, enchantRegistry, Enchantments.SHARPNESS, Math.min(5, 1 + (level - 3) / 2));
+            if (level >= 4)  setEnchant(mutable, enchantRegistry, Enchantments.UNBREAKING, Math.min(3, 1 + (level - 4) / 3));
+            if (level >= 6)  setEnchant(mutable, enchantRegistry, Enchantments.FIRE_ASPECT, Math.min(2, 1 + (level - 6) / 4));
+            if (level >= 8)  setEnchant(mutable, enchantRegistry, Enchantments.LOOTING, Math.min(3, 1 + (level - 8) / 3));
+            if (level >= 12) setEnchant(mutable, enchantRegistry, Enchantments.MENDING, 1);
         }
+
+        stack.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
     }
 
-    private static void addEnchant(ItemStack stack, ResourceKey<Enchantment> key, int level) {
-        try {
-            // Use the registry access from the item if possible; fallback safe path
-            var enchants = stack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
-            ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(enchants);
-
-            // Try to resolve the enchantment holder
-            // In practice on server we can get registry from server, but for simplicity
-            // we use a direct approach that works with official mappings
-            stack.enchant(key, level); // ItemStack.enchant exists in modern versions
-        } catch (Exception e) {
-            // Silent fail if enchant key not found - still keep vanishing via other path
-        }
+    private static void setEnchant(ItemEnchantments.Mutable mutable, net.minecraft.core.HolderLookup.RegistryLookup<Enchantment> registry, ResourceKey<Enchantment> key, int level) {
+        registry.get(key).ifPresent(holder -> mutable.set(holder, level));
     }
 
     public static ItemStack createSiftMace() {
@@ -119,10 +114,9 @@ public class WeaponHelper {
         stack.set(DataComponents.CUSTOM_NAME, Component.literal("Sift Mace").withStyle(s -> s.withItalic(false).withColor(0x55FFFF).withBold(true)));
         stack.set(DataComponents.LORE, new ItemLore(List.of(
             Component.literal("§bRight-click: Dash"),
-            Component.literal("§7Passive: Strength III + Speed III"),
+            Component.literal("§7Passive: Strength III + Speed III + Haste"),
             Component.literal("§8Limited: 2 on server")
         )));
-        addEnchant(stack, Enchantments.VANISHING_CURSE, 1);
         return stack;
     }
 
@@ -132,15 +126,10 @@ public class WeaponHelper {
         stack.set(DataComponents.CUSTOM_NAME, Component.literal("God Mace").withStyle(s -> s.withItalic(false).withColor(0xFF55FF).withBold(true)));
         stack.set(DataComponents.LORE, new ItemLore(List.of(
             Component.literal("§dRight-click: Power Dash"),
-            Component.literal("§dPassive: Strength IV + Speed III + Resistance II"),
+            Component.literal("§dPassive: Strength IV + Speed III + Resistance II + Haste"),
             Component.literal("§dOn kill: Shockwave knockback"),
             Component.literal("§8Limited: 1 on server")
         )));
-        addEnchant(stack, Enchantments.VANISHING_CURSE, 1);
-        addEnchant(stack, Enchantments.DENSITY, 5);
-        addEnchant(stack, Enchantments.BREACH, 4);
-        addEnchant(stack, Enchantments.WIND_BURST, 3);
-        addEnchant(stack, Enchantments.UNBREAKING, 3);
         return stack;
     }
 
@@ -149,14 +138,10 @@ public class WeaponHelper {
         setTypeAndLevel(stack, TYPE_GOD_SPEAR, 0);
         stack.set(DataComponents.CUSTOM_NAME, Component.literal("God Spear").withStyle(s -> s.withItalic(false).withColor(0xFFAA00).withBold(true)));
         stack.set(DataComponents.LORE, new ItemLore(List.of(
-            Component.literal("§6Passive: Strength III + Speed II + Jump Boost II"),
+            Component.literal("§6Passive: Strength III + Speed II + Jump Boost II + Haste"),
             Component.literal("§6On kill: Lightning strike + power surge"),
             Component.literal("§8Limited: 1 on server")
         )));
-        addEnchant(stack, Enchantments.VANISHING_CURSE, 1);
-        addEnchant(stack, Enchantments.LUNGE, 3);
-        addEnchant(stack, Enchantments.SHARPNESS, 5);
-        addEnchant(stack, Enchantments.UNBREAKING, 3);
         return stack;
     }
 
@@ -183,7 +168,7 @@ public class WeaponHelper {
 
     public static String getAbilityDescription(int level, boolean isMace) {
         if (isMace && level >= 10) {
-            if (level >= 13) return "§c§lRAINBOW MAX: Strength III + Speed II + Resistance + Regen + Haste";
+            if (level >= 13) return "§c§lRAINBOW MAX: Strength III + Speed II + Resistance + Regen + Haste II";
             return "§d§lRAINBOW: Strength II + Speed II + Resistance + Regen + Haste";
         }
         if (level >= 13) return "§c§lMAX: Strength III + Speed II + Resistance + Regen + Haste II";
@@ -191,7 +176,7 @@ public class WeaponHelper {
         if (level >= 9)  return "§eStrong: Strength II + Speed I + Haste";
         if (level >= 7)  return "§aNetherite: Strength I + Speed I + Haste";
         if (level >= 5)  return "§bGrowing: Strength I + Haste";
-        if (level >= 3)  return "§7Developing power + Haste";
+        if (level >= 3)  return "§7Developing + Haste";
         return "§8Basic · Keep killing players!";
     }
 
@@ -251,17 +236,19 @@ public class WeaponHelper {
         return data.copyTag().getString(KEY_TYPE).orElse("");
     }
 
-    public static ItemStack upgradeToLevel(ItemStack old, int newLevel) {
+    public static ItemStack upgradeToLevel(ItemStack old, int newLevel, ServerPlayer player) {
         boolean isMace = getType(old).contains("mace");
         ItemStack upgraded = createLevelled(newLevel, isMace);
-
-        // Preserve any extra enchants the player may have added
-        if (old.has(DataComponents.ENCHANTMENTS)) {
-            // New stack already has progressive enchants; keep strongest
-        }
+        applyEnchants(upgraded, newLevel, isMace, player);
         if (old.has(DataComponents.DAMAGE)) {
             upgraded.set(DataComponents.DAMAGE, old.get(DataComponents.DAMAGE));
         }
         return upgraded;
+    }
+
+    // Backwards compatible overload
+    public static ItemStack upgradeToLevel(ItemStack old, int newLevel) {
+        boolean isMace = getType(old).contains("mace");
+        return createLevelled(newLevel, isMace);
     }
 }

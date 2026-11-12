@@ -20,7 +20,6 @@ public class SiftMaceHandler {
     private static final long GOD_DASH_COOLDOWN_MS = 2000L;
 
     public static void register() {
-        // Right-click dash for Sift / God Mace
         UseItemCallback.EVENT.register((player, world, hand) -> {
             if (world.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
                 return InteractionResult.PASS;
@@ -42,18 +41,15 @@ public class SiftMaceHandler {
             double power = god ? 2.8 : 1.6;
             double yBoost = god ? 0.55 : 0.35;
             player.setDeltaMovement(look.x * power, Math.max(yBoost, look.y * power * 0.55), look.z * power);
-            player.hurtMarked = true; // force velocity sync
             lastDash.put(player.getUUID(), now);
             serverPlayer.sendSystemMessage(Component.literal(god ? "§d§lGOD DASH!" : "§bDash!"));
             return InteractionResult.SUCCESS;
         });
 
-        // Passive effects every tick while holding the weapon
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 ItemStack main = player.getMainHandItem();
 
-                // God / Sift specials (highest priority)
                 if (WeaponHelper.isGodMace(main)) {
                     apply(player, MobEffects.STRENGTH, 3);
                     apply(player, MobEffects.SPEED, 2);
@@ -80,13 +76,12 @@ public class SiftMaceHandler {
                 int level = WeaponHelper.getLevel(main);
                 boolean rainbow = WeaponHelper.isRainbowMace(main);
 
-                // Freshlol-style progressive passives
                 if (rainbow || level >= 13) {
-                    apply(player, MobEffects.STRENGTH, 2);      // III
-                    apply(player, MobEffects.SPEED, 1);         // II
-                    apply(player, MobEffects.RESISTANCE, 0);    // I
-                    apply(player, MobEffects.REGENERATION, 0);  // I
-                    apply(player, MobEffects.HASTE, 1);         // II
+                    apply(player, MobEffects.STRENGTH, 2);
+                    apply(player, MobEffects.SPEED, 1);
+                    apply(player, MobEffects.RESISTANCE, 0);
+                    apply(player, MobEffects.REGENERATION, 0);
+                    apply(player, MobEffects.HASTE, 1);
                 } else if (level >= 11) {
                     apply(player, MobEffects.STRENGTH, 1);
                     apply(player, MobEffects.SPEED, 1);
@@ -104,7 +99,7 @@ public class SiftMaceHandler {
                     apply(player, MobEffects.STRENGTH, 0);
                     apply(player, MobEffects.HASTE, 0);
                 } else if (level >= 3) {
-                    apply(player, MobEffects.HASTE, 0); // permanent haste like Freshlol early upgrades
+                    apply(player, MobEffects.HASTE, 0);
                 }
             }
         });

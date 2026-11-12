@@ -17,7 +17,6 @@ import net.minecraft.world.phys.Vec3;
 public class KillUpgradeHandler {
 
     public static void onDeath(LivingEntity entity, DamageSource source) {
-        // ONLY upgrade on PLAYER kills (not mobs / animals / any other entity)
         if (!(entity instanceof ServerPlayer victim)) {
             return;
         }
@@ -29,17 +28,14 @@ public class KillUpgradeHandler {
 
         ItemStack main = killer.getMainHandItem();
 
-        // Levelled / Rainbow weapon progression (player kill only)
         if (WeaponHelper.isLevelled(main)) {
             int current = WeaponHelper.getLevel(main);
             if (current < WeaponHelper.MAX_LEVEL) {
                 int next = current + 1;
                 boolean isMace = WeaponHelper.getType(main).contains("mace");
 
-                // Create a proper upgraded stack so the spear material / rainbow type actually changes
-                ItemStack upgraded = WeaponHelper.upgradeToLevel(main, next);
-
-                // Replace the item in the main hand (compatible with MC 26.x)
+                // Upgrade level + material + enchants
+                ItemStack upgraded = WeaponHelper.upgradeToLevel(main, next, killer);
                 killer.setItemInHand(InteractionHand.MAIN_HAND, upgraded);
 
                 if (isMace && next == 10) {
@@ -62,15 +58,14 @@ public class KillUpgradeHandler {
                 } else if (next == 2 && !isMace) {
                     killer.sendSystemMessage(Component.literal("§aYour wooden spear became a §6Copper Spear§a!"));
                 } else if (next == 7 && !isMace) {
-                    killer.sendSystemMessage(Component.literal("§5Your spear ascended to §dNetherite§5! Keep going for more power!"));
+                    killer.sendSystemMessage(Component.literal("§5Your spear ascended to §dNetherite§5!"));
                 }
             }
         }
 
-        // God Mace shockwave
         if (WeaponHelper.isGodMace(main) && killer.level() instanceof ServerLevel serverLevel) {
             Vec3 pos = entity.position();
-            AABB box = new AABB(pos.x - 4.0, pos.y - 2.0, pos.z - 4.0, pos.x + 4.0, pos.y + 3.0, pos.z + 4.0);
+            AABB box = new AABB(pos.x - 4.0, pos.y - 2.0, pos.z - 4. 0, pos.x + 4.0, pos.y + 3.0, pos.z + 4.0);
             for (LivingEntity nearby : serverLevel.getEntitiesOfClass(LivingEntity.class, box)) {
                 if (nearby == killer || nearby == entity || !nearby.isAlive()) continue;
                 Vec3 away = nearby.position().subtract(pos).normalize().scale(1.4).add(0.0, 0.45, 0.0);
@@ -79,7 +74,6 @@ public class KillUpgradeHandler {
             killer.sendSystemMessage(Component.literal("§dGod Mace shockwave!"));
         }
 
-        // God Spear power surge
         if (WeaponHelper.isGodSpear(main)) {
             killer.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 80, 3, false, true, true));
             killer.addEffect(new MobEffectInstance(MobEffects.GLOWING, 40, 0, false, true, true));
@@ -87,7 +81,6 @@ public class KillUpgradeHandler {
             killer.sendSystemMessage(Component.literal("§6God Spear power surge!"));
         }
 
-        // High-level / Rainbow kill rewards
         if (WeaponHelper.isLevelled(main)) {
             int level = WeaponHelper.getLevel(main);
             if (level >= 10) {
