@@ -4,6 +4,7 @@ import com.freshlol.siftweapons.util.WeaponHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -38,8 +39,8 @@ public class KillUpgradeHandler {
                 // Create a proper upgraded stack so the spear material / rainbow type actually changes
                 ItemStack upgraded = WeaponHelper.upgradeToLevel(main, next);
 
-                // Replace the item in the main hand
-                killer.getInventory().setItem(killer.getInventory().selected, upgraded);
+                // Replace the item in the main hand (compatible with MC 26.x)
+                killer.setItemInHand(InteractionHand.MAIN_HAND, upgraded);
 
                 if (isMace && next == 10) {
                     killer.sendSystemMessage(Component.literal("§c§l★ RAINBOW MACE UNLOCKED! ★"));
