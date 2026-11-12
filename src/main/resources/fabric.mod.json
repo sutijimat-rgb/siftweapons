@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "id": "siftweapons",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "name": "Sift Weapons (Server-Side)",
-  "description": "Server-only 14-level Spear/Mace progression. Player kills only. Spears change material. Rainbow Mace at level 10+. Special abilities by level.",
+  "description": "Server-only 14-level Spear/Mace progression. Curse of Vanishing, progressive enchants, Haste and special abilities. Player kills only.",
   "authors": ["Grok"],
   "license": "MIT",
   "environment": "server",
