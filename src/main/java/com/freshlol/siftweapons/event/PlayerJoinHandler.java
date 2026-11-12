@@ -16,13 +16,14 @@ public class PlayerJoinHandler {
         if (state.hasReceivedStarter(player.getUUID())) {
             return;
         }
-        // Level 1 Mace + Level 1 Wooden Spear
         ItemStack mace = WeaponHelper.createLevelled(1, true);
         ItemStack spear = WeaponHelper.createLevelled(1, false);
+        WeaponHelper.applyEnchants(mace, 1, true, player);
+        WeaponHelper.applyEnchants(spear, 1, false, player);
         player.getInventory().add(mace);
         player.getInventory().add(spear);
         state.markStarterGiven(player.getUUID());
         player.sendSystemMessage(Component.literal("§a[Sift Weapons] You received Level 1 Mace and Level 1 Wooden Spear!"));
-        player.sendSystemMessage(Component.literal("§7Kill players while holding them to upgrade. Spears change material!"));
+        player.sendSystemMessage(Component.literal("§7Kill players to upgrade. Both have §cCurse of Vanishing§7."));
     }
 }

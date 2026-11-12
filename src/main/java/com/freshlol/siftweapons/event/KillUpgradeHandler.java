@@ -34,7 +34,6 @@ public class KillUpgradeHandler {
                 int next = current + 1;
                 boolean isMace = WeaponHelper.getType(main).contains("mace");
 
-                // Upgrade level + material + enchants
                 ItemStack upgraded = WeaponHelper.upgradeToLevel(main, next, killer);
                 killer.setItemInHand(InteractionHand.MAIN_HAND, upgraded);
 
@@ -65,7 +64,7 @@ public class KillUpgradeHandler {
 
         if (WeaponHelper.isGodMace(main) && killer.level() instanceof ServerLevel serverLevel) {
             Vec3 pos = entity.position();
-            AABB box = new AABB(pos.x - 4.0, pos.y - 2.0, pos.z - 4. 0, pos.x + 4.0, pos.y + 3.0, pos.z + 4.0);
+            AABB box = new AABB(pos.x - 4.0, pos.y - 2.0, pos.z - 4.0, pos.x + 4.0, pos.y + 3.0, pos.z + 4.0);
             for (LivingEntity nearby : serverLevel.getEntitiesOfClass(LivingEntity.class, box)) {
                 if (nearby == killer || nearby == entity || !nearby.isAlive()) continue;
                 Vec3 away = nearby.position().subtract(pos).normalize().scale(1.4).add(0.0, 0.45, 0.0);

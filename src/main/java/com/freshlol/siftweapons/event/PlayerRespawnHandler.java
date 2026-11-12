@@ -7,18 +7,16 @@ import net.minecraft.world.item.ItemStack;
 
 public class PlayerRespawnHandler {
 
-    /**
-     * Called after a player respawns. Gives them a fresh Level 1 Mace and Level 1 Wooden Spear.
-     */
     public static void onRespawn(ServerPlayer oldPlayer, ServerPlayer newPlayer, boolean alive) {
-        // Give Level 1 Mace + Level 1 Wooden Spear every time they respawn after death
         ItemStack mace = WeaponHelper.createLevelled(1, true);
         ItemStack spear = WeaponHelper.createLevelled(1, false);
+        WeaponHelper.applyEnchants(mace, 1, true, newPlayer);
+        WeaponHelper.applyEnchants(spear, 1, false, newPlayer);
 
         newPlayer.getInventory().add(mace);
         newPlayer.getInventory().add(spear);
 
         newPlayer.sendSystemMessage(Component.literal("§a[Sift Weapons] You respawned with a Level 1 Mace and Level 1 Wooden Spear!"));
-        newPlayer.sendSystemMessage(Component.literal("§7Kill players to upgrade them."));
+        newPlayer.sendSystemMessage(Component.literal("§7Both have §cCurse of Vanishing§7. Kill players to upgrade."));
     }
 }
