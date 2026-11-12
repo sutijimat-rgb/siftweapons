@@ -22,10 +22,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Special abilities for Mace AND Spear (Freshlol style):
- * - Right-click: Dash / Lunge (works on levelled + special weapons)
- * - Hit: Stun / Shield disable at higher levels
- * - Passives: Strength, Speed, Haste, Resistance, Regen by level
+ * Special abilities for Mace AND Spear:
+ * - Right-click: Dash / Lunge
+ * - Hit: Stun + Shield disable
+ * - Passives: work if weapon is ANYWHERE in inventory (not only main hand)
  */
 public class SiftMaceHandler {
     private static final Map<UUID, Long> lastDash = new HashMap<>();
@@ -33,16 +33,12 @@ public class SiftMaceHandler {
     private static final long GOD_DASH_COOLDOWN_MS = 1500L;
 
     public static void register() {
-        // RIGHT-CLICK = Dash / Lunge for mace + spear
         UseItemCallback.EVENT.register(SiftMaceHandler::onUseItem);
-
-        // ON-HIT specials: stun + shield break
         AttackEntityCallback.EVENT.register(SiftMaceHandler::onAttack);
 
-        // PASSIVE effects every tick while holding
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-                applyPassives(player);
+                applyPassivesFromInventory(player);
             }
         });
     }
@@ -53,7 +49,7 @@ public class SiftMaceHandler {
         }
 
         ItemStack stack = player.getItemInHand(hand);
-        if (!canDash(stack)) {
+        if (!canUseAbility(stack)) {
             return InteractionResult.PASS;
         }
 
@@ -74,7 +70,6 @@ public class SiftMaceHandler {
 
         Vec3 look = player.getLookAngle().normalize();
 
-        // Power scales with tier
         double power;
         double yBoost;
         String msg;
@@ -96,19 +91,17 @@ public class SiftMaceHandler {
             yBoost = 0.32;
             msg = isMace ? "§7Dash" : "§7Lunge";
         } else {
-            // Level 1-3: small hop dash so early game still has ability
             power = 1.1;
             yBoost = 0.28;
             msg = isMace ? "§8Dash" : "§8Lunge";
         }
 
-        // Set velocity
         double vx = look.x * power;
         double vy = Math.max(yBoost, look.y * power * 0.5);
         double vz = look.z * power;
         player.setDeltaMovement(vx, vy, vz);
 
-        // FORCE client to see the dash (this was missing before)
+        // Force client velocity sync so dash is visible
         serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(player));
 
         lastDash.put(player.getUUID(), now);
@@ -116,7 +109,7 @@ public class SiftMaceHandler {
         return InteractionResult.SUCCESS;
     }
 
-    private static boolean canDash(ItemStack stack) {
+    private static boolean canUseAbility(ItemStack stack) {
         return WeaponHelper.isLevelled(stack)
             || WeaponHelper.isSiftMace(stack)
             || WeaponHelper.isGodMace(stack)
@@ -132,7 +125,7 @@ public class SiftMaceHandler {
         }
 
         ItemStack stack = player.getItemInHand(hand);
-        if (!canDash(stack)) {
+        if (!canUseAbility(stack)) {
             return InteractionResult.PASS;
         }
 
@@ -141,16 +134,19 @@ public class SiftMaceHandler {
         boolean rainbow = WeaponHelper.isRainbowMace(stack);
         boolean sift = WeaponHelper.isSiftMace(stack);
 
-        // Shield disable (Freshlol "disable" ability) - high level / god / rainbow
+        // Shield disable
         if (god || rainbow || level >= 10 || sift) {
             if (target instanceof ServerPlayer victim && victim.isBlocking()) {
-                victim.getCooldowns().addCooldown(victim.getUseItem().getItem(), 100); // 5s shield cooldown
+                ItemStack blocking = victim.getUseItem();
+                if (!blocking.isEmpty()) {
+                    victim.getCooldowns().addCooldown(blocking, 100); // 5 seconds
+                }
                 victim.stopUsingItem();
                 serverPlayer.sendSystemMessage(Component.literal("§c§lSHIELD DISABLED!"), true);
             }
         }
 
-        // Stun on hit (slowness + mining fatigue) - mid+ levels
+        // Stun
         if (god || rainbow || level >= 7) {
             int duration = god ? 60 : (rainbow || level >= 12 ? 40 : 25);
             target.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, duration, 1, false, true, true));
@@ -160,7 +156,7 @@ public class SiftMaceHandler {
             }
         }
 
-        // God / high level knockback boost
+        // Extra knockback
         if (god || level >= 11) {
             Vec3 away = target.position().subtract(player.position()).normalize().scale(god ? 1.6 : 1.1);
             target.setDeltaMovement(target.getDeltaMovement().add(away.x, 0.35, away.z));
@@ -169,26 +165,43 @@ public class SiftMaceHandler {
             }
         }
 
-        return InteractionResult.PASS; // don't cancel the attack
+        return InteractionResult.PASS;
     }
 
-    private static void applyPassives(ServerPlayer player) {
-        ItemStack main = player.getMainHandItem();
+    /**
+     * Passives apply if the best Sift weapon is ANYWHERE in the player's inventory
+     * (main hand, offhand, or any hotbar/inv slot).
+     */
+    private static void applyPassivesFromInventory(ServerPlayer player) {
+        ItemStack best = ItemStack.EMPTY;
+        int bestScore = -1;
 
-        if (WeaponHelper.isGodMace(main)) {
+        // Scan whole inventory + offhand
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            ItemStack stack = player.getInventory().getItem(i);
+            int score = scoreWeapon(stack);
+            if (score > bestScore) {
+                bestScore = score;
+                best = stack;
+            }
+        }
+
+        if (bestScore < 0 || best.isEmpty()) return;
+
+        if (WeaponHelper.isGodMace(best)) {
             apply(player, MobEffects.STRENGTH, 3);
             apply(player, MobEffects.SPEED, 2);
             apply(player, MobEffects.RESISTANCE, 1);
             apply(player, MobEffects.HASTE, 1);
             return;
         }
-        if (WeaponHelper.isSiftMace(main)) {
+        if (WeaponHelper.isSiftMace(best)) {
             apply(player, MobEffects.STRENGTH, 2);
             apply(player, MobEffects.SPEED, 2);
             apply(player, MobEffects.HASTE, 1);
             return;
         }
-        if (WeaponHelper.isGodSpear(main)) {
+        if (WeaponHelper.isGodSpear(best)) {
             apply(player, MobEffects.STRENGTH, 2);
             apply(player, MobEffects.SPEED, 1);
             apply(player, MobEffects.JUMP_BOOST, 1);
@@ -196,10 +209,10 @@ public class SiftMaceHandler {
             return;
         }
 
-        if (!WeaponHelper.isLevelled(main)) return;
+        if (!WeaponHelper.isLevelled(best)) return;
 
-        int level = WeaponHelper.getLevel(main);
-        boolean rainbow = WeaponHelper.isRainbowMace(main);
+        int level = WeaponHelper.getLevel(best);
+        boolean rainbow = WeaponHelper.isRainbowMace(best);
 
         if (rainbow || level >= 13) {
             apply(player, MobEffects.STRENGTH, 2);
@@ -226,6 +239,16 @@ public class SiftMaceHandler {
         } else if (level >= 3) {
             apply(player, MobEffects.HASTE, 0);
         }
+    }
+
+    private static int scoreWeapon(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return -1;
+        if (WeaponHelper.isGodMace(stack)) return 1000;
+        if (WeaponHelper.isGodSpear(stack)) return 900;
+        if (WeaponHelper.isSiftMace(stack)) return 800;
+        if (WeaponHelper.isRainbowMace(stack)) return 500 + WeaponHelper.getLevel(stack);
+        if (WeaponHelper.isLevelled(stack)) return WeaponHelper.getLevel(stack);
+        return -1;
     }
 
     private static void apply(ServerPlayer player, net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect, int amplifier) {
