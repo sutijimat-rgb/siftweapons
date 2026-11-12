@@ -3,10 +3,12 @@ package com.freshlol.siftweapons;
 import com.freshlol.siftweapons.command.SiftCommand;
 import com.freshlol.siftweapons.event.KillUpgradeHandler;
 import com.freshlol.siftweapons.event.PlayerJoinHandler;
+import com.freshlol.siftweapons.event.PlayerRespawnHandler;
 import com.freshlol.siftweapons.event.SiftMaceHandler;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
@@ -26,7 +28,8 @@ public class SiftWeaponsMod implements ModInitializer {
         CommandRegistrationCallback.EVENT.register(SiftCommand::register);
         ServerPlayConnectionEvents.JOIN.register(PlayerJoinHandler::onJoin);
         ServerLivingEntityEvents.AFTER_DEATH.register(KillUpgradeHandler::onDeath);
+        ServerPlayerEvents.AFTER_RESPAWN.register(PlayerRespawnHandler::onRespawn);
         SiftMaceHandler.register();
-        LOGGER.info("Sift Weapons initialized. Player kills only. Rainbow Mace at lvl 10+.");
+        LOGGER.info("Sift Weapons initialized. Player kills only. Respawn gives L1 Mace + Spear. Rainbow Mace at lvl 10+.");
     }
 }
