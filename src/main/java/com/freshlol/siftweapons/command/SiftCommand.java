@@ -3,9 +3,7 @@ package com.freshlol.siftweapons.command;
 import com.freshlol.siftweapons.data.WeaponState;
 import com.freshlol.siftweapons.util.WeaponHelper;
 import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
-import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
@@ -14,6 +12,7 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.Permissions;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 
 public class SiftCommand {
@@ -94,9 +93,14 @@ public class SiftCommand {
                     .then(Commands.literal("player")
                         .then(Commands.argument("target", EntityArgument.player())
                             .executes(ctx -> {
-                                ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
-                                WeaponState.get(ctx.getSource().getServer()).resetPlayer(target.getUUID());
-                                ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Reset first-join for " + target.getName().getString() + ". They get starters next join."), true);
+                                try {
+                                    ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
+                                    WeaponState.get(ctx.getSource().getServer()).resetPlayer(target.getUUID());
+                                    ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Reset first-join for " + target.getName().getString() + ". They get starters next join."), true);
+                                } catch (Exception e) {
+                                    ctx.getSource().sendFailure(Component.literal("§cError: " + e.getMessage()));
+                                    return 0;
+                                }
                                 return 1;
                             })
                         )
@@ -105,82 +109,112 @@ public class SiftCommand {
         );
     }
 
-    private static int giveWeapon(CommandContext<CommandSourceStack> ctx, boolean isMace, int level) throws Exception {
-        ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
-        ItemStack stack = WeaponHelper.createLevelled(level, isMace);
-        target.getInventory().add(stack);
-        String name = isMace ? (level >= 10 ? "Rainbow Mace" : "Mace") : (WeaponHelper.getMaterialName(level) + " Spear");
-        ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Gave §eLevel " + level + " " + name + " §ato " + target.getName().getString()), true);
-        target.sendSystemMessage(Component.literal("§a[Sift] You received a Level " + level + " " + name + "!"));
-        return 1;
-    }
-
-    private static int giveRainbow(CommandContext<CommandSourceStack> ctx, int level) throws Exception {
-        ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
-        ItemStack stack = WeaponHelper.createLevelled(Math.max(10, level), true);
-        target.getInventory().add(stack);
-        ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Gave §cRainbow Mace §e(Level " + level + ") §ato " + target.getName().getString()), true);
-        target.sendSystemMessage(Component.literal("§a[Sift] You received a §cRainbow Mace§a!"));
-        return 1;
-    }
-
-    private static int giveSiftMace(CommandContext<CommandSourceStack> ctx) throws Exception {
-        ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
-        WeaponState state = WeaponState.get(ctx.getSource().getServer());
-        if (!state.canCreateSiftMace()) {
-            ctx.getSource().sendFailure(Component.literal("§cSift Mace limit reached (2/2)"));
+    private static int giveWeapon(CommandContext<CommandSourceStack> ctx, boolean isMace, int level) {
+        try {
+            ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
+            ItemStack stack = WeaponHelper.createLevelled(level, isMace);
+            target.getInventory().add(stack);
+            String name = isMace ? (level >= 10 ? "Rainbow Mace" : "Mace") : (WeaponHelper.getMaterialName(level) + " Spear");
+            ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Gave §eLevel " + level + " " + name + " §ato " + target.getName().getString()), true);
+            target.sendSystemMessage(Component.literal("§a[Sift] You received a Level " + level + " " + name + "!"));
+            return 1;
+        } catch (Exception e) {
+            ctx.getSource().sendFailure(Component.literal("§cError: " + e.getMessage()));
             return 0;
         }
-        ItemStack stack = WeaponHelper.createSiftMace();
-        target.getInventory().add(stack);
-        state.incrementSiftMace();
-        ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Gave Sift Mace to " + target.getName().getString()), true);
-        return 1;
     }
 
-    private static int giveGodMace(CommandContext<CommandSourceStack> ctx) throws Exception {
-        ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
-        WeaponState state = WeaponState.get(ctx.getSource().getServer());
-        if (!state.canCreateGodMace()) {
-            ctx.getSource().sendFailure(Component.literal("§cGod Mace limit reached (1/1)"));
+    private static int giveRainbow(CommandContext<CommandSourceStack> ctx, int level) {
+        try {
+            ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
+            ItemStack stack = WeaponHelper.createLevelled(Math.max(10, level), true);
+            target.getInventory().add(stack);
+            ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Gave §cRainbow Mace §e(Level " + level + ") §ato " + target.getName().getString()), true);
+            target.sendSystemMessage(Component.literal("§a[Sift] You received a §cRainbow Mace§a!"));
+            return 1;
+        } catch (Exception e) {
+            ctx.getSource().sendFailure(Component.literal("§cError: " + e.getMessage()));
             return 0;
         }
-        ItemStack stack = WeaponHelper.createGodMace();
-        target.getInventory().add(stack);
-        state.incrementGodMace();
-        ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Gave God Mace to " + target.getName().getString()), true);
-        return 1;
     }
 
-    private static int giveGodSpear(CommandContext<CommandSourceStack> ctx) throws Exception {
-        ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
-        WeaponState state = WeaponState.get(ctx.getSource().getServer());
-        if (!state.canCreateGodSpear()) {
-            ctx.getSource().sendFailure(Component.literal("§cGod Spear limit reached (1/1)"));
+    private static int giveSiftMace(CommandContext<CommandSourceStack> ctx) {
+        try {
+            ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
+            WeaponState state = WeaponState.get(ctx.getSource().getServer());
+            if (!state.canCreateSiftMace()) {
+                ctx.getSource().sendFailure(Component.literal("§cSift Mace limit reached (2/2)"));
+                return 0;
+            }
+            ItemStack stack = WeaponHelper.createSiftMace();
+            target.getInventory().add(stack);
+            state.incrementSiftMace();
+            ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Gave Sift Mace to " + target.getName().getString()), true);
+            return 1;
+        } catch (Exception e) {
+            ctx.getSource().sendFailure(Component.literal("§cError: " + e.getMessage()));
             return 0;
         }
-        ItemStack stack = WeaponHelper.createGodSpear();
-        target.getInventory().add(stack);
-        state.incrementGodSpear();
-        ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Gave God Spear to " + target.getName().getString()), true);
-        return 1;
     }
 
-    private static int setLevel(CommandContext<CommandSourceStack> ctx) throws Exception {
-        ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
-        int level = IntegerArgumentType.getInteger(ctx, "level");
-        ItemStack main = target.getMainHandItem();
-
-        if (!WeaponHelper.isLevelled(main)) {
-            ctx.getSource().sendFailure(Component.literal("§cPlayer is not holding a levelled Sift weapon."));
+    private static int giveGodMace(CommandContext<CommandSourceStack> ctx) {
+        try {
+            ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
+            WeaponState state = WeaponState.get(ctx.getSource().getServer());
+            if (!state.canCreateGodMace()) {
+                ctx.getSource().sendFailure(Component.literal("§cGod Mace limit reached (1/1)"));
+                return 0;
+            }
+            ItemStack stack = WeaponHelper.createGodMace();
+            target.getInventory().add(stack);
+            state.incrementGodMace();
+            ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Gave God Mace to " + target.getName().getString()), true);
+            return 1;
+        } catch (Exception e) {
+            ctx.getSource().sendFailure(Component.literal("§cError: " + e.getMessage()));
             return 0;
         }
+    }
 
-        ItemStack upgraded = WeaponHelper.upgradeToLevel(main, level);
-        target.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, upgraded);
+    private static int giveGodSpear(CommandContext<CommandSourceStack> ctx) {
+        try {
+            ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
+            WeaponState state = WeaponState.get(ctx.getSource().getServer());
+            if (!state.canCreateGodSpear()) {
+                ctx.getSource().sendFailure(Component.literal("§cGod Spear limit reached (1/1)"));
+                return 0;
+            }
+            ItemStack stack = WeaponHelper.createGodSpear();
+            target.getInventory().add(stack);
+            state.incrementGodSpear();
+            ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Gave God Spear to " + target.getName().getString()), true);
+            return 1;
+        } catch (Exception e) {
+            ctx.getSource().sendFailure(Component.literal("§cError: " + e.getMessage()));
+            return 0;
+        }
+    }
 
-        ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Set " + target.getName().getString() + "'s weapon to Level " + level), true);
-        target.sendSystemMessage(Component.literal("§a[Sift] Your weapon was set to Level " + level + "!"));
-        return 1;
+    private static int setLevel(CommandContext<CommandSourceStack> ctx) {
+        try {
+            ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
+            int level = IntegerArgumentType.getInteger(ctx, "level");
+            ItemStack main = target.getMainHandItem();
+
+            if (!WeaponHelper.isLevelled(main)) {
+                ctx.getSource().sendFailure(Component.literal("§cPlayer is not holding a levelled Sift weapon."));
+                return 0;
+            }
+
+            ItemStack upgraded = WeaponHelper.upgradeToLevel(main, level);
+            target.setItemInHand(InteractionHand.MAIN_HAND, upgraded);
+
+            ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Set " + target.getName().getString() + "'s weapon to Level " + level), true);
+            target.sendSystemMessage(Component.literal("§a[Sift] Your weapon was set to Level " + level + "!"));
+            return 1;
+        } catch (Exception e) {
+            ctx.getSource().sendFailure(Component.literal("§cError: " + e.getMessage()));
+            return 0;
+        }
     }
 }
