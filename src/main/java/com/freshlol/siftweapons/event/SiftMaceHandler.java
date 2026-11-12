@@ -20,6 +20,7 @@ public class SiftMaceHandler {
     private static final long GOD_DASH_COOLDOWN_MS = 2000L;
 
     public static void register() {
+        // Right-click dash for Sift / God Mace
         UseItemCallback.EVENT.register((player, world, hand) -> {
             if (world.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
                 return InteractionResult.PASS;
@@ -41,30 +42,36 @@ public class SiftMaceHandler {
             double power = god ? 2.8 : 1.6;
             double yBoost = god ? 0.55 : 0.35;
             player.setDeltaMovement(look.x * power, Math.max(yBoost, look.y * power * 0.55), look.z * power);
+            player.hurtMarked = true; // force velocity sync
             lastDash.put(player.getUUID(), now);
             serverPlayer.sendSystemMessage(Component.literal(god ? "§d§lGOD DASH!" : "§bDash!"));
             return InteractionResult.SUCCESS;
         });
 
+        // Passive effects every tick while holding the weapon
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 ItemStack main = player.getMainHandItem();
 
+                // God / Sift specials (highest priority)
                 if (WeaponHelper.isGodMace(main)) {
-                    player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 40, 3, false, false, true));
-                    player.addEffect(new MobEffectInstance(MobEffects.SPEED, 40, 2, false, false, true));
-                    player.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 40, 1, false, false, true));
+                    apply(player, MobEffects.STRENGTH, 3);
+                    apply(player, MobEffects.SPEED, 2);
+                    apply(player, MobEffects.RESISTANCE, 1);
+                    apply(player, MobEffects.HASTE, 1);
                     continue;
                 }
                 if (WeaponHelper.isSiftMace(main)) {
-                    player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 40, 2, false, false, true));
-                    player.addEffect(new MobEffectInstance(MobEffects.SPEED, 40, 2, false, false, true));
+                    apply(player, MobEffects.STRENGTH, 2);
+                    apply(player, MobEffects.SPEED, 2);
+                    apply(player, MobEffects.HASTE, 1);
                     continue;
                 }
                 if (WeaponHelper.isGodSpear(main)) {
-                    player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 40, 2, false, false, true));
-                    player.addEffect(new MobEffectInstance(MobEffects.SPEED, 40, 1, false, false, true));
-                    player.addEffect(new MobEffectInstance(MobEffects.JUMP_BOOST, 40, 1, false, false, true));
+                    apply(player, MobEffects.STRENGTH, 2);
+                    apply(player, MobEffects.SPEED, 1);
+                    apply(player, MobEffects.JUMP_BOOST, 1);
+                    apply(player, MobEffects.HASTE, 1);
                     continue;
                 }
 
@@ -73,40 +80,37 @@ public class SiftMaceHandler {
                 int level = WeaponHelper.getLevel(main);
                 boolean rainbow = WeaponHelper.isRainbowMace(main);
 
-                if (rainbow) {
-                    if (level >= 13) {
-                        player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 40, 2, false, false, true));
-                        player.addEffect(new MobEffectInstance(MobEffects.SPEED, 40, 1, false, false, true));
-                        player.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 40, 0, false, false, true));
-                        player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 40, 0, false, false, true));
-                        player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 40, 0, false, false, true));
-                    } else {
-                        player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 40, 1, false, false, true));
-                        player.addEffect(new MobEffectInstance(MobEffects.SPEED, 40, 1, false, false, true));
-                        player.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 40, 0, false, false, true));
-                        player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 40, 0, false, false, true));
-                    }
-                } else {
-                    if (level >= 13) {
-                        player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 40, 2, false, false, true));
-                        player.addEffect(new MobEffectInstance(MobEffects.SPEED, 40, 1, false, false, true));
-                        player.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 40, 0, false, false, true));
-                        player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 40, 0, false, false, true));
-                    } else if (level >= 11) {
-                        player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 40, 1, false, false, true));
-                        player.addEffect(new MobEffectInstance(MobEffects.SPEED, 40, 1, false, false, true));
-                        player.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 40, 0, false, false, true));
-                    } else if (level >= 9) {
-                        player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 40, 1, false, false, true));
-                        player.addEffect(new MobEffectInstance(MobEffects.SPEED, 40, 0, false, false, true));
-                    } else if (level >= 7) {
-                        player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 40, 0, false, false, true));
-                        player.addEffect(new MobEffectInstance(MobEffects.SPEED, 40, 0, false, false, true));
-                    } else if (level >= 5) {
-                        player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 40, 0, false, false, true));
-                    }
+                // Freshlol-style progressive passives
+                if (rainbow || level >= 13) {
+                    apply(player, MobEffects.STRENGTH, 2);      // III
+                    apply(player, MobEffects.SPEED, 1);         // II
+                    apply(player, MobEffects.RESISTANCE, 0);    // I
+                    apply(player, MobEffects.REGENERATION, 0);  // I
+                    apply(player, MobEffects.HASTE, 1);         // II
+                } else if (level >= 11) {
+                    apply(player, MobEffects.STRENGTH, 1);
+                    apply(player, MobEffects.SPEED, 1);
+                    apply(player, MobEffects.RESISTANCE, 0);
+                    apply(player, MobEffects.HASTE, 0);
+                } else if (level >= 9) {
+                    apply(player, MobEffects.STRENGTH, 1);
+                    apply(player, MobEffects.SPEED, 0);
+                    apply(player, MobEffects.HASTE, 0);
+                } else if (level >= 7) {
+                    apply(player, MobEffects.STRENGTH, 0);
+                    apply(player, MobEffects.SPEED, 0);
+                    apply(player, MobEffects.HASTE, 0);
+                } else if (level >= 5) {
+                    apply(player, MobEffects.STRENGTH, 0);
+                    apply(player, MobEffects.HASTE, 0);
+                } else if (level >= 3) {
+                    apply(player, MobEffects.HASTE, 0); // permanent haste like Freshlol early upgrades
                 }
             }
         });
+    }
+
+    private static void apply(ServerPlayer player, net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect, int amplifier) {
+        player.addEffect(new MobEffectInstance(effect, 40, amplifier, false, false, true));
     }
 }
