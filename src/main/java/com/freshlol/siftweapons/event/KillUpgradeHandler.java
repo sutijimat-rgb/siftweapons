@@ -42,18 +42,20 @@ public class KillUpgradeHandler {
                     killer.sendSystemMessage(Component.literal("§dYour mace has transcended into a §cR§6a§ei§an§bb§do§5w §fMace§d!"));
                 } else if (isMace && WeaponHelper.isRainbowTier(next)) {
                     killer.sendSystemMessage(Component.literal(
-                        "§d[Sift] Your §cR§6a§ei§an§bb§do§5w §fMace §dupgraded to §eLevel " + next + "§d!"
+                        "§d[Sift] Your §cR§6a§ei§an§bb§do§5w §fMace §dupgraded to §eLevel " + next + "/14§d!"
                     ));
                 } else {
                     String mat = isMace ? "" : (WeaponHelper.getMaterialName(next) + " ");
                     killer.sendSystemMessage(Component.literal(
-                        "§b[Sift] Your Level " + current + (isMace ? " Mace" : " Spear") +
-                        " upgraded to §eLevel " + next + " " + mat + (isMace ? "Mace" : "Spear") + "§b!"
+                        "§b[Sift] Level " + current + " → §eLevel " + next + "/14 " + mat + (isMace ? "Mace" : "Spear") + "§b!"
                     ));
                 }
 
                 if (next == WeaponHelper.MAX_LEVEL) {
-                    killer.sendSystemMessage(Component.literal("§6§lMAX LEVEL reached! Ultimate power unlocked!"));
+                    killer.sendSystemMessage(Component.literal("§6§lMAX LEVEL 14/14 reached!"));
+                    if (isMace) {
+                        killer.sendSystemMessage(Component.literal("§bHold this mace and type §e/siftclaim §bto convert it into a §b§lSift Mace§b!"));
+                    }
                 } else if (next == 2 && !isMace) {
                     killer.sendSystemMessage(Component.literal("§aYour wooden spear became a §6Copper Spear§a!"));
                 } else if (next == 7 && !isMace) {
