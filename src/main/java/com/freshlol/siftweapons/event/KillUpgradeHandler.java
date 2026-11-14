@@ -54,7 +54,8 @@ public class KillUpgradeHandler {
                 if (next == WeaponHelper.MAX_LEVEL) {
                     killer.sendSystemMessage(Component.literal("§6§lMAX LEVEL 14/14 reached!"));
                     if (isMace) {
-                        killer.sendSystemMessage(Component.literal("§bHold this mace and type §e/siftclaim §bto convert it into a §b§lSift Mace§b!"));
+                        killer.sendSystemMessage(Component.literal("§7Craft a §bSift Mace §7with §fa mace + diamond§7 (only 2 on the server)."))
+                        ;
                     }
                 } else if (next == 2 && !isMace) {
                     killer.sendSystemMessage(Component.literal("§aYour wooden spear became a §6Copper Spear§a!"));
