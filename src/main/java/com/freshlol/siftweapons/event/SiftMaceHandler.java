@@ -17,25 +17,38 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.food.FoodData;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 public class SiftMaceHandler {
     private static final Map<UUID, Long> lastDash = new HashMap<>();
+    /** After a level 8+ spear lunge, block hunger drain for this long */
+    private static final Map<UUID, Long> hungerProtectUntil = new HashMap<>();
 
-    // Cooldowns
-    private static final long SIFT_DASH_COOLDOWN_MS = 800L;   // 0.80 seconds
+    private static final long SIFT_DASH_COOLDOWN_MS = 800L;
     private static final long DASH_COOLDOWN_MS = 2500L;
     private static final long GOD_DASH_COOLDOWN_MS = 1500L;
+    private static final long LUNGE_HUNGER_PROTECT_MS = 4000L; // 4s no hunger after lunge
 
     public static void register() {
         UseItemCallback.EVENT.register(SiftMaceHandler::onUseItem);
         AttackEntityCallback.EVENT.register(SiftMaceHandler::onAttack);
 
         ServerTickEvents.END_SERVER_TICK.register(server -> {
+            long now = System.currentTimeMillis();
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 applyPassivesFromInventory(player);
+
+                // Level 8+ spear lunge: hunger does not go down during protect window
+                Long until = hungerProtectUntil.get(player.getUUID());
+                if (until != null && now < until) {
+                    FoodData food = player.getFoodData();
+                    food.setExhaustion(0.0f);
+                } else if (until != null) {
+                    hungerProtectUntil.remove(player.getUUID());
+                }
             }
         });
     }
@@ -55,8 +68,8 @@ public class SiftMaceHandler {
         boolean rainbow = WeaponHelper.isRainbowMace(stack);
         int level = WeaponHelper.getLevel(stack);
         boolean isMace = WeaponHelper.getType(stack).contains("mace");
+        boolean isSpear = WeaponHelper.getType(stack).contains("spear") || WeaponHelper.isGodSpear(stack);
 
-        // Levels 1-6: no dash
         if (!god && !sift && level > 0 && level <= 6) {
             return InteractionResult.PASS;
         }
@@ -66,7 +79,7 @@ public class SiftMaceHandler {
 
         long cooldown;
         if (sift) {
-            cooldown = SIFT_DASH_COOLDOWN_MS; // 0.80s
+            cooldown = SIFT_DASH_COOLDOWN_MS;
         } else if (god) {
             cooldown = GOD_DASH_COOLDOWN_MS;
         } else {
@@ -77,7 +90,6 @@ public class SiftMaceHandler {
         Long last = lastDash.get(player.getUUID());
         if (last != null && now - last < cooldown) {
             long remainingMs = cooldown - (now - last);
-            // Show as seconds with 1 decimal for short cooldowns
             String left = remainingMs < 1000
                 ? String.format("%.1fs", remainingMs / 1000.0)
                 : ((remainingMs + 999) / 1000) + "s";
@@ -87,32 +99,19 @@ public class SiftMaceHandler {
 
         Vec3 look = player.getLookAngle().normalize();
 
-        double power;
-        double yBoost;
-        String msg;
-
+        // --- SIFT MACE: full look-direction dash ---
         if (sift) {
-            /*
-             * Sift dash: FULLY follows look direction.
-             * Look up = rocket up, look down = slam down fast, look forward = horizontal.
-             * No forced upward boost so down-dash works.
-             */
-            power = 3.6;
+            double power = 3.6;
             double vx = look.x * power;
-            double vy = look.y * power; // pure look Y — negative when looking down
+            double vy = look.y * power;
             double vz = look.z * power;
-
-            // Extra punch when slamming down or launching up
-            if (look.y < -0.35) {
-                vy *= 1.35; // faster dive
-            } else if (look.y > 0.35) {
-                vy *= 1.25; // stronger upward launch
-            }
+            if (look.y < -0.35) vy *= 1.35;
+            else if (look.y > 0.35) vy *= 1.25;
 
             player.setDeltaMovement(vx, vy, vz);
             serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(player));
-
             lastDash.put(player.getUUID(), now);
+
             if (look.y < -0.35) {
                 serverPlayer.sendSystemMessage(Component.literal("§b§lSIFT SLAM!"), true);
             } else if (look.y > 0.35) {
@@ -122,6 +121,10 @@ public class SiftMaceHandler {
             }
             return InteractionResult.SUCCESS;
         }
+
+        double power;
+        double yBoost;
+        String msg;
 
         if (god) {
             power = 4.2;
@@ -151,8 +154,16 @@ public class SiftMaceHandler {
 
         player.setDeltaMovement(vx, vy, vz);
         serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(player));
-
         lastDash.put(player.getUUID(), now);
+
+        // Level 8+ spear lunge: hunger does not drain
+        if (isSpear && (god || level >= 8)) {
+            hungerProtectUntil.put(player.getUUID(), now + LUNGE_HUNGER_PROTECT_MS);
+            serverPlayer.getFoodData().setExhaustion(0.0f);
+            // small saturation top-up so bar stays full
+            serverPlayer.getFoodData().setSaturation(Math.max(serverPlayer.getFoodData().getSaturationLevel(), 6.0f));
+        }
+
         serverPlayer.sendSystemMessage(Component.literal(msg), true);
         return InteractionResult.SUCCESS;
     }
@@ -239,6 +250,7 @@ public class SiftMaceHandler {
             apply(player, MobEffects.STRENGTH, 2);
             apply(player, MobEffects.SPEED, 2);
             apply(player, MobEffects.HASTE, 1);
+            apply(player, MobEffects.RESISTANCE, 2); // Resistance III
             return;
         }
         if (WeaponHelper.isGodSpear(best)) {
