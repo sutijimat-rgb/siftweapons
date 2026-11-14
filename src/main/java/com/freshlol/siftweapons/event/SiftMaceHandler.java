@@ -21,12 +21,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
-/**
- * Special abilities for Mace AND Spear:
- * - Right-click: Dash / Lunge
- * - Hit: Stun + Shield disable
- * - Passives: work if weapon is ANYWHERE in inventory (not only main hand)
- */
 public class SiftMaceHandler {
     private static final Map<UUID, Long> lastDash = new HashMap<>();
     private static final long DASH_COOLDOWN_MS = 2500L;
@@ -70,38 +64,40 @@ public class SiftMaceHandler {
 
         Vec3 look = player.getLookAngle().normalize();
 
+        // MUCH stronger dashes. God mace aims for ~30 blocks vertical.
         double power;
         double yBoost;
         String msg;
 
         if (god) {
-            power = 3.0;
-            yBoost = 0.6;
+            // ~30 blocks up for God Mace / huge lunge for God Spear
+            power = 4.5;
+            yBoost = 5.5; // dominant vertical launch
             msg = isMace ? "§d§lGOD DASH!" : "§6§lGOD LUNGE!";
         } else if (sift || rainbow || level >= 12) {
-            power = 2.2;
-            yBoost = 0.45;
+            power = 3.2;
+            yBoost = 2.8;
             msg = isMace ? "§c§lPOWER DASH!" : "§e§lPOWER LUNGE!";
         } else if (level >= 8) {
-            power = 1.8;
-            yBoost = 0.4;
+            power = 2.6;
+            yBoost = 1.8;
             msg = isMace ? "§bDash!" : "§bLunge!";
-        } else if (level >= 4 || sift) {
-            power = 1.4;
-            yBoost = 0.32;
+        } else if (level >= 4) {
+            power = 2.0;
+            yBoost = 1.2;
             msg = isMace ? "§7Dash" : "§7Lunge";
         } else {
-            power = 1.1;
-            yBoost = 0.28;
+            power = 1.5;
+            yBoost = 0.8;
             msg = isMace ? "§8Dash" : "§8Lunge";
         }
 
+        // Blend look direction with guaranteed vertical boost so it always feels strong
         double vx = look.x * power;
-        double vy = Math.max(yBoost, look.y * power * 0.5);
+        double vy = Math.max(yBoost, look.y * power + yBoost * 0.35);
         double vz = look.z * power;
-        player.setDeltaMovement(vx, vy, vz);
 
-        // Force client velocity sync so dash is visible
+        player.setDeltaMovement(vx, vy, vz);
         serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(player));
 
         lastDash.put(player.getUUID(), now);
@@ -134,19 +130,17 @@ public class SiftMaceHandler {
         boolean rainbow = WeaponHelper.isRainbowMace(stack);
         boolean sift = WeaponHelper.isSiftMace(stack);
 
-        // Shield disable
         if (god || rainbow || level >= 10 || sift) {
             if (target instanceof ServerPlayer victim && victim.isBlocking()) {
                 ItemStack blocking = victim.getUseItem();
                 if (!blocking.isEmpty()) {
-                    victim.getCooldowns().addCooldown(blocking, 100); // 5 seconds
+                    victim.getCooldowns().addCooldown(blocking, 100);
                 }
                 victim.stopUsingItem();
                 serverPlayer.sendSystemMessage(Component.literal("§c§lSHIELD DISABLED!"), true);
             }
         }
 
-        // Stun
         if (god || rainbow || level >= 7) {
             int duration = god ? 60 : (rainbow || level >= 12 ? 40 : 25);
             target.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, duration, 1, false, true, true));
@@ -156,7 +150,6 @@ public class SiftMaceHandler {
             }
         }
 
-        // Extra knockback
         if (god || level >= 11) {
             Vec3 away = target.position().subtract(player.position()).normalize().scale(god ? 1.6 : 1.1);
             target.setDeltaMovement(target.getDeltaMovement().add(away.x, 0.35, away.z));
@@ -168,15 +161,10 @@ public class SiftMaceHandler {
         return InteractionResult.PASS;
     }
 
-    /**
-     * Passives apply if the best Sift weapon is ANYWHERE in the player's inventory
-     * (main hand, offhand, or any hotbar/inv slot).
-     */
     private static void applyPassivesFromInventory(ServerPlayer player) {
         ItemStack best = ItemStack.EMPTY;
         int bestScore = -1;
 
-        // Scan whole inventory + offhand
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
             ItemStack stack = player.getInventory().getItem(i);
             int score = scoreWeapon(stack);
