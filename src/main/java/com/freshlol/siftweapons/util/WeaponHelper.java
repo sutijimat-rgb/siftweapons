@@ -19,7 +19,7 @@ import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.ItemLike;
 
 public class WeaponHelper {
-    public static final int MAX_LEVEL = 14; // full 14 levels
+    public static final int MAX_LEVEL = 14;
     private static final String KEY_TYPE = "sift_type";
     private static final String KEY_LEVEL = "sift_level";
     public static final String TYPE_LEVELLED_MACE = "levelled_mace";
@@ -38,7 +38,7 @@ public class WeaponHelper {
             case 4 -> Items.IRON_SPEAR;
             case 5 -> Items.GOLDEN_SPEAR;
             case 6 -> Items.DIAMOND_SPEAR;
-            default -> Items.NETHERITE_SPEAR; // 7 through 14
+            default -> Items.NETHERITE_SPEAR;
         };
     }
 
@@ -73,6 +73,20 @@ public class WeaponHelper {
     }
 
     public static void applyEnchants(ItemStack stack, int level, boolean isMace, ServerPlayer player) {
+        // Sift / God weapons get their own full enchant loadout
+        if (isSiftMace(stack)) {
+            applySiftMaceEnchants(stack, player);
+            return;
+        }
+        if (isGodMace(stack)) {
+            applyGodMaceEnchants(stack, player);
+            return;
+        }
+        if (isGodSpear(stack)) {
+            applyGodSpearEnchants(stack, player);
+            return;
+        }
+
         RegistryAccess registry = player.level().registryAccess();
         var enchantRegistry = registry.lookupOrThrow(Registries.ENCHANTMENT);
 
@@ -101,6 +115,57 @@ public class WeaponHelper {
         stack.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
     }
 
+    /** Maxed Sift Mace enchants (works like a sword too via Sharpness V) */
+    public static void applySiftMaceEnchants(ItemStack stack, ServerPlayer player) {
+        RegistryAccess registry = player.level().registryAccess();
+        var enchantRegistry = registry.lookupOrThrow(Registries.ENCHANTMENT);
+        ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(ItemEnchantments.EMPTY);
+
+        setEnchant(mutable, enchantRegistry, Enchantments.WIND_BURST, 2);
+        setEnchant(mutable, enchantRegistry, Enchantments.DENSITY, 6);
+        setEnchant(mutable, enchantRegistry, Enchantments.BREACH, 5);
+        setEnchant(mutable, enchantRegistry, Enchantments.FIRE_ASPECT, 3);
+        setEnchant(mutable, enchantRegistry, Enchantments.SHARPNESS, 5);
+        setEnchant(mutable, enchantRegistry, Enchantments.MENDING, 1);
+        setEnchant(mutable, enchantRegistry, Enchantments.UNBREAKING, 3);
+        setEnchant(mutable, enchantRegistry, Enchantments.VANISHING_CURSE, 1);
+
+        stack.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
+    }
+
+    public static void applyGodMaceEnchants(ItemStack stack, ServerPlayer player) {
+        RegistryAccess registry = player.level().registryAccess();
+        var enchantRegistry = registry.lookupOrThrow(Registries.ENCHANTMENT);
+        ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(ItemEnchantments.EMPTY);
+
+        setEnchant(mutable, enchantRegistry, Enchantments.WIND_BURST, 3);
+        setEnchant(mutable, enchantRegistry, Enchantments.DENSITY, 6);
+        setEnchant(mutable, enchantRegistry, Enchantments.BREACH, 5);
+        setEnchant(mutable, enchantRegistry, Enchantments.FIRE_ASPECT, 3);
+        setEnchant(mutable, enchantRegistry, Enchantments.SHARPNESS, 5);
+        setEnchant(mutable, enchantRegistry, Enchantments.MENDING, 1);
+        setEnchant(mutable, enchantRegistry, Enchantments.UNBREAKING, 3);
+        setEnchant(mutable, enchantRegistry, Enchantments.VANISHING_CURSE, 1);
+
+        stack.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
+    }
+
+    public static void applyGodSpearEnchants(ItemStack stack, ServerPlayer player) {
+        RegistryAccess registry = player.level().registryAccess();
+        var enchantRegistry = registry.lookupOrThrow(Registries.ENCHANTMENT);
+        ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(ItemEnchantments.EMPTY);
+
+        setEnchant(mutable, enchantRegistry, Enchantments.LUNGE, 3);
+        setEnchant(mutable, enchantRegistry, Enchantments.SHARPNESS, 5);
+        setEnchant(mutable, enchantRegistry, Enchantments.FIRE_ASPECT, 2);
+        setEnchant(mutable, enchantRegistry, Enchantments.LOOTING, 3);
+        setEnchant(mutable, enchantRegistry, Enchantments.MENDING, 1);
+        setEnchant(mutable, enchantRegistry, Enchantments.UNBREAKING, 3);
+        setEnchant(mutable, enchantRegistry, Enchantments.VANISHING_CURSE, 1);
+
+        stack.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
+    }
+
     private static void setEnchant(ItemEnchantments.Mutable mutable, net.minecraft.core.HolderLookup.RegistryLookup<Enchantment> registry, ResourceKey<Enchantment> key, int level) {
         registry.get(key).ifPresent(holder -> mutable.set(holder, level));
     }
@@ -112,6 +177,7 @@ public class WeaponHelper {
         stack.set(DataComponents.LORE, new ItemLore(List.of(
             Component.literal("§bRight-click: Dash"),
             Component.literal("§7Passive: Strength III + Speed III + Haste"),
+            Component.literal("§eWB2 · Density 6 · Breach 5 · FA3 · Sharp 5 · Mending"),
             Component.literal("§8Limited: 2 on server")
         )));
         return stack;

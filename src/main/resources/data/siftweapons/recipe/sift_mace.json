@@ -27,8 +27,8 @@
           "italic": false
         },
         {
-          "text": "Passive: Strength + Speed + Haste",
-          "color": "gray",
+          "text": "WB2 · Density 6 · Breach 5 · FA3 · Sharp 5 · Mending",
+          "color": "yellow",
           "italic": false
         },
         {
@@ -42,6 +42,13 @@
         "sift_level": 0
       },
       "minecraft:enchantments": {
+        "minecraft:wind_burst": 2,
+        "minecraft:density": 6,
+        "minecraft:breach": 5,
+        "minecraft:fire_aspect": 3,
+        "minecraft:sharpness": 5,
+        "minecraft:mending": 1,
+        "minecraft:unbreaking": 3,
         "minecraft:vanishing_curse": 1
       }
     }
