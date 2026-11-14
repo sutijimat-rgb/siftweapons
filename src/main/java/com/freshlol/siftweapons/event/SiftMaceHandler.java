@@ -23,6 +23,9 @@ import net.minecraft.world.phys.Vec3;
 
 public class SiftMaceHandler {
     private static final Map<UUID, Long> lastDash = new HashMap<>();
+
+    // Cooldowns
+    private static final long SIFT_DASH_COOLDOWN_MS = 800L;   // 0.80 seconds
     private static final long DASH_COOLDOWN_MS = 2500L;
     private static final long GOD_DASH_COOLDOWN_MS = 1500L;
 
@@ -53,48 +56,77 @@ public class SiftMaceHandler {
         int level = WeaponHelper.getLevel(stack);
         boolean isMace = WeaponHelper.getType(stack).contains("mace");
 
-        // Levels 1-6: NO dash at all (levelled weapons only)
+        // Levels 1-6: no dash
         if (!god && !sift && level > 0 && level <= 6) {
             return InteractionResult.PASS;
         }
-
-        // Sift mace can always dash; God always; levelled only 7+
         if (!god && !sift && level < 7 && !rainbow) {
             return InteractionResult.PASS;
         }
 
-        long cooldown = god ? GOD_DASH_COOLDOWN_MS : DASH_COOLDOWN_MS;
+        long cooldown;
+        if (sift) {
+            cooldown = SIFT_DASH_COOLDOWN_MS; // 0.80s
+        } else if (god) {
+            cooldown = GOD_DASH_COOLDOWN_MS;
+        } else {
+            cooldown = DASH_COOLDOWN_MS;
+        }
+
         long now = System.currentTimeMillis();
         Long last = lastDash.get(player.getUUID());
         if (last != null && now - last < cooldown) {
-            long remaining = (cooldown - (now - last) + 999L) / 1000L;
-            serverPlayer.sendSystemMessage(Component.literal("§cAbility on cooldown (" + remaining + "s)"), true);
+            long remainingMs = cooldown - (now - last);
+            // Show as seconds with 1 decimal for short cooldowns
+            String left = remainingMs < 1000
+                ? String.format("%.1fs", remainingMs / 1000.0)
+                : ((remainingMs + 999) / 1000) + "s";
+            serverPlayer.sendSystemMessage(Component.literal("§cAbility on cooldown (" + left + ")"), true);
             return InteractionResult.FAIL;
         }
 
         Vec3 look = player.getLookAngle().normalize();
 
-        /*
-         * Balanced vertical scale (approx height):
-         *  7-8   ~6-8 blocks
-         *  9-10  ~10-12 blocks
-         *  11-12 ~14-16 blocks
-         *  13-14 ~18-20 blocks
-         *  God   ~28-32 blocks
-         *  Sift  ~12-14 blocks
-         */
         double power;
         double yBoost;
         String msg;
+
+        if (sift) {
+            /*
+             * Sift dash: FULLY follows look direction.
+             * Look up = rocket up, look down = slam down fast, look forward = horizontal.
+             * No forced upward boost so down-dash works.
+             */
+            power = 3.6;
+            double vx = look.x * power;
+            double vy = look.y * power; // pure look Y — negative when looking down
+            double vz = look.z * power;
+
+            // Extra punch when slamming down or launching up
+            if (look.y < -0.35) {
+                vy *= 1.35; // faster dive
+            } else if (look.y > 0.35) {
+                vy *= 1.25; // stronger upward launch
+            }
+
+            player.setDeltaMovement(vx, vy, vz);
+            serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(player));
+
+            lastDash.put(player.getUUID(), now);
+            if (look.y < -0.35) {
+                serverPlayer.sendSystemMessage(Component.literal("§b§lSIFT SLAM!"), true);
+            } else if (look.y > 0.35) {
+                serverPlayer.sendSystemMessage(Component.literal("§b§lSIFT LAUNCH!"), true);
+            } else {
+                serverPlayer.sendSystemMessage(Component.literal("§b§lSIFT DASH!"), true);
+            }
+            return InteractionResult.SUCCESS;
+        }
 
         if (god) {
             power = 4.2;
             yBoost = 5.2;
             msg = isMace ? "§d§lGOD DASH!" : "§6§lGOD LUNGE!";
-        } else if (sift) {
-            power = 2.8;
-            yBoost = 2.2;
-            msg = "§b§lSIFT DASH!";
         } else if (level >= 13) {
             power = 3.4;
             yBoost = 3.2;
@@ -108,7 +140,6 @@ public class SiftMaceHandler {
             yBoost = 2.0;
             msg = isMace ? "§bDash!" : "§bLunge!";
         } else {
-            // level 7-8
             power = 2.0;
             yBoost = 1.4;
             msg = isMace ? "§7Dash" : "§7Lunge";
@@ -162,16 +193,16 @@ public class SiftMaceHandler {
             }
         }
 
-        if (god || rainbow || level >= 7) {
-            int duration = god ? 60 : (rainbow || level >= 12 ? 40 : 25);
+        if (god || rainbow || level >= 7 || sift) {
+            int duration = god ? 60 : (sift || rainbow || level >= 12 ? 40 : 25);
             target.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, duration, 1, false, true, true));
             target.addEffect(new MobEffectInstance(MobEffects.MINING_FATIGUE, duration, 0, false, true, true));
-            if (god || level >= 12) {
+            if (god || sift || level >= 12) {
                 target.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, duration / 2, 0, false, true, true));
             }
         }
 
-        if (god || level >= 11) {
+        if (god || sift || level >= 11) {
             Vec3 away = target.position().subtract(player.position()).normalize().scale(god ? 1.6 : 1.1);
             target.setDeltaMovement(target.getDeltaMovement().add(away.x, 0.35, away.z));
             if (target instanceof ServerPlayer tp) {
