@@ -1,7 +1,6 @@
 package com.freshlol.siftweapons.util;
 
 import java.util.List;
-import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
@@ -20,7 +19,7 @@ import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.ItemLike;
 
 public class WeaponHelper {
-    public static final int MAX_LEVEL = 14;
+    public static final int MAX_LEVEL = 14; // full 14 levels
     private static final String KEY_TYPE = "sift_type";
     private static final String KEY_LEVEL = "sift_level";
     public static final String TYPE_LEVELLED_MACE = "levelled_mace";
@@ -39,7 +38,7 @@ public class WeaponHelper {
             case 4 -> Items.IRON_SPEAR;
             case 5 -> Items.GOLDEN_SPEAR;
             case 6 -> Items.DIAMOND_SPEAR;
-            default -> Items.NETHERITE_SPEAR;
+            default -> Items.NETHERITE_SPEAR; // 7 through 14
         };
     }
 
@@ -73,7 +72,6 @@ public class WeaponHelper {
         return stack;
     }
 
-    /** Call this when you have a player/server to apply proper enchants + vanishing */
     public static void applyEnchants(ItemStack stack, int level, boolean isMace, ServerPlayer player) {
         RegistryAccess registry = player.level().registryAccess();
         var enchantRegistry = registry.lookupOrThrow(Registries.ENCHANTMENT);
@@ -82,7 +80,6 @@ public class WeaponHelper {
             stack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY)
         );
 
-        // Always Curse of Vanishing
         setEnchant(mutable, enchantRegistry, Enchantments.VANISHING_CURSE, 1);
 
         if (isMace) {
@@ -125,7 +122,7 @@ public class WeaponHelper {
         setTypeAndLevel(stack, TYPE_GOD_MACE, 0);
         stack.set(DataComponents.CUSTOM_NAME, Component.literal("God Mace").withStyle(s -> s.withItalic(false).withColor(0xFF55FF).withBold(true)));
         stack.set(DataComponents.LORE, new ItemLore(List.of(
-            Component.literal("§dRight-click: Power Dash"),
+            Component.literal("§dRight-click: Massive Dash (~30 blocks)"),
             Component.literal("§dPassive: Strength IV + Speed III + Resistance II + Haste"),
             Component.literal("§dOn kill: Shockwave knockback"),
             Component.literal("§8Limited: 1 on server")
@@ -149,19 +146,34 @@ public class WeaponHelper {
         int color = levelColor(level);
         String name;
         if (isMace && isRainbowTier(level)) {
-            name = "§c§lR§6§la§e§li§a§ln§b§lb§d§lo§5§lw §f§lMace §7(Level " + level + ")";
+            name = "§c§lR§6§la§e§li§a§ln§b§lb§d§lo§5§lw §f§lMace §7[Level " + level + "/14]";
             stack.set(DataComponents.CUSTOM_NAME, Component.literal(name).withStyle(s -> s.withItalic(false)));
         } else if (isMace) {
-            name = "Level " + level + " Mace";
+            name = "Level " + level + "/14 Mace";
             stack.set(DataComponents.CUSTOM_NAME, Component.literal(name).withStyle(s -> s.withItalic(false).withColor(color)));
         } else {
-            name = "Level " + level + " " + getMaterialName(level) + " Spear";
+            name = "Level " + level + "/14 " + getMaterialName(level) + " Spear";
             stack.set(DataComponents.CUSTOM_NAME, Component.literal(name).withStyle(s -> s.withItalic(false).withColor(color)));
         }
+
+        String dashLine;
+        if (level <= 6) {
+            dashLine = "§8Dash: unlocks at Level 7";
+        } else if (level <= 8) {
+            dashLine = "§7Dash: Small";
+        } else if (level <= 10) {
+            dashLine = "§bDash: Medium";
+        } else if (level <= 12) {
+            dashLine = "§cDash: Strong";
+        } else {
+            dashLine = "§c§lDash: Max";
+        }
+
         stack.set(DataComponents.LORE, new ItemLore(List.of(
             Component.literal("§7Kill players to upgrade · Max 14"),
             Component.literal("§8Progress: " + level + "/14"),
             Component.literal(getAbilityDescription(level, isMace)),
+            Component.literal(dashLine),
             Component.literal("§cCurse of Vanishing")
         )));
     }
@@ -174,7 +186,7 @@ public class WeaponHelper {
         if (level >= 13) return "§c§lMAX: Strength III + Speed II + Resistance + Regen + Haste II";
         if (level >= 11) return "§6High: Strength II + Speed II + Resistance + Haste";
         if (level >= 9)  return "§eStrong: Strength II + Speed I + Haste";
-        if (level >= 7)  return "§aNetherite: Strength I + Speed I + Haste";
+        if (level >= 7)  return "§aNetherite: Strength I + Speed I + Haste + Dash";
         if (level >= 5)  return "§bGrowing: Strength I + Haste";
         if (level >= 3)  return "§7Developing + Haste";
         return "§8Basic · Keep killing players!";
@@ -238,6 +250,7 @@ public class WeaponHelper {
 
     public static ItemStack upgradeToLevel(ItemStack old, int newLevel, ServerPlayer player) {
         boolean isMace = getType(old).contains("mace");
+        newLevel = Math.max(1, Math.min(MAX_LEVEL, newLevel));
         ItemStack upgraded = createLevelled(newLevel, isMace);
         applyEnchants(upgraded, newLevel, isMace, player);
         if (old.has(DataComponents.DAMAGE)) {
@@ -246,9 +259,8 @@ public class WeaponHelper {
         return upgraded;
     }
 
-    // Backwards compatible overload
     public static ItemStack upgradeToLevel(ItemStack old, int newLevel) {
         boolean isMace = getType(old).contains("mace");
-        return createLevelled(newLevel, isMace);
+        return createLevelled(Math.max(1, Math.min(MAX_LEVEL, newLevel)), isMace);
     }
 }

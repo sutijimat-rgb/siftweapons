@@ -53,6 +53,16 @@ public class SiftMaceHandler {
         int level = WeaponHelper.getLevel(stack);
         boolean isMace = WeaponHelper.getType(stack).contains("mace");
 
+        // Levels 1-6: NO dash at all (levelled weapons only)
+        if (!god && !sift && level > 0 && level <= 6) {
+            return InteractionResult.PASS;
+        }
+
+        // Sift mace can always dash; God always; levelled only 7+
+        if (!god && !sift && level < 7 && !rainbow) {
+            return InteractionResult.PASS;
+        }
+
         long cooldown = god ? GOD_DASH_COOLDOWN_MS : DASH_COOLDOWN_MS;
         long now = System.currentTimeMillis();
         Long last = lastDash.get(player.getUUID());
@@ -64,37 +74,48 @@ public class SiftMaceHandler {
 
         Vec3 look = player.getLookAngle().normalize();
 
-        // MUCH stronger dashes. God mace aims for ~30 blocks vertical.
+        /*
+         * Balanced vertical scale (approx height):
+         *  7-8   ~6-8 blocks
+         *  9-10  ~10-12 blocks
+         *  11-12 ~14-16 blocks
+         *  13-14 ~18-20 blocks
+         *  God   ~28-32 blocks
+         *  Sift  ~12-14 blocks
+         */
         double power;
         double yBoost;
         String msg;
 
         if (god) {
-            // ~30 blocks up for God Mace / huge lunge for God Spear
-            power = 4.5;
-            yBoost = 5.5; // dominant vertical launch
+            power = 4.2;
+            yBoost = 5.2;
             msg = isMace ? "§d§lGOD DASH!" : "§6§lGOD LUNGE!";
-        } else if (sift || rainbow || level >= 12) {
-            power = 3.2;
-            yBoost = 2.8;
-            msg = isMace ? "§c§lPOWER DASH!" : "§e§lPOWER LUNGE!";
-        } else if (level >= 8) {
-            power = 2.6;
-            yBoost = 1.8;
+        } else if (sift) {
+            power = 2.8;
+            yBoost = 2.2;
+            msg = "§b§lSIFT DASH!";
+        } else if (level >= 13) {
+            power = 3.4;
+            yBoost = 3.2;
+            msg = isMace ? "§c§lMAX DASH!" : "§e§lMAX LUNGE!";
+        } else if (level >= 11) {
+            power = 3.0;
+            yBoost = 2.6;
+            msg = isMace ? "§cPower Dash!" : "§ePower Lunge!";
+        } else if (level >= 9) {
+            power = 2.5;
+            yBoost = 2.0;
             msg = isMace ? "§bDash!" : "§bLunge!";
-        } else if (level >= 4) {
-            power = 2.0;
-            yBoost = 1.2;
-            msg = isMace ? "§7Dash" : "§7Lunge";
         } else {
-            power = 1.5;
-            yBoost = 0.8;
-            msg = isMace ? "§8Dash" : "§8Lunge";
+            // level 7-8
+            power = 2.0;
+            yBoost = 1.4;
+            msg = isMace ? "§7Dash" : "§7Lunge";
         }
 
-        // Blend look direction with guaranteed vertical boost so it always feels strong
         double vx = look.x * power;
-        double vy = Math.max(yBoost, look.y * power + yBoost * 0.35);
+        double vy = Math.max(yBoost, look.y * power + yBoost * 0.3);
         double vz = look.z * power;
 
         player.setDeltaMovement(vx, vy, vz);
