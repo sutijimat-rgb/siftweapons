@@ -18,12 +18,6 @@ import net.minecraft.world.item.ItemStack;
 public class SiftCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext registry, Commands.CommandSelection selection) {
-        // Player command: /siftclaim  (no op needed) — claim Sift Mace at level 14
-        dispatcher.register(
-            Commands.literal("siftclaim")
-                .executes(SiftCommand::claimSift)
-        );
-
         dispatcher.register(
             Commands.literal("sift")
                 .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
@@ -34,22 +28,20 @@ public class SiftCommand {
                 .then(Commands.literal("help").executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(
                         "§6=== Sift Weapons Commands ===\n" +
-                        "§e/siftclaim §7- (anyone) claim Sift Mace if holding Level 14 mace\n" +
                         "§e/sift info §7- show weapon limits\n" +
                         "§e/sift give <player> <type> [level] §7- give a weapon\n" +
                         "  types: spear, mace, rainbow, sift, godmace, godspear\n" +
                         "§e/sift setlevel <player> <level> §7- set level of held levelled weapon\n" +
                         "§e/sift fix [player] §7- re-apply vanishing + enchants\n" +
-                        "§e/sift reset §7- reset all"
+                        "§e/sift reset §7- reset all\n" +
+                        "§aCraft Sift Mace: §fmace + diamond §7(shapeless)"
                     ), false);
                     return 1;
                 }))
                 .then(Commands.literal("info").executes(ctx -> {
                     WeaponState s = WeaponState.get(ctx.getSource().getServer());
                     ctx.getSource().sendSuccess(() -> Component.literal(
-                        "§6Sift Mace: §f" + s.getSiftMaceCount() + "/" + WeaponState.MAX_SIFT_MACE +
-                        "  §dGod Mace: §f" + s.getGodMaceCount() + "/" + WeaponState.MAX_GOD_MACE +
-                        "  §6God Spear: §f" + s.getGodSpearCount() + "/" + WeaponState.MAX_GOD_SPEAR
+                        "§6Sift Mace: §f" + s.getSiftMaceCount() + "/2  §dGod Mace: §f" + s.getGodMaceCount() + "/1  §6God Spear: §f" + s.getGodSpearCount() + "/1"
                     ), false);
                     return 1;
                 }))
@@ -133,48 +125,6 @@ public class SiftCommand {
         );
     }
 
-    /** Anyone can run /siftclaim while holding a Level 14 mace to get a Sift Mace (once). */
-    private static int claimSift(CommandContext<CommandSourceStack> ctx) {
-        ServerPlayer player = ctx.getSource().getPlayer();
-        if (player == null) {
-            ctx.getSource().sendFailure(Component.literal("§cPlayers only."));
-            return 0;
-        }
-
-        WeaponState state = WeaponState.get(ctx.getSource().getServer());
-        if (state.hasClaimedSift(player.getUUID())) {
-            ctx.getSource().sendFailure(Component.literal("§cYou already claimed your Sift Mace."));
-            return 0;
-        }
-        if (!state.canCreateSiftMace()) {
-            ctx.getSource().sendFailure(Component.literal("§cServer Sift Mace limit reached."));
-            return 0;
-        }
-
-        ItemStack main = player.getMainHandItem();
-        boolean ok = WeaponHelper.isLevelled(main)
-            && WeaponHelper.getType(main).contains("mace")
-            && WeaponHelper.getLevel(main) >= 14;
-
-        if (!ok) {
-            ctx.getSource().sendFailure(Component.literal("§cHold a §eLevel 14 Mace §cin your main hand, then run §e/siftclaim§c."));
-            return 0;
-        }
-
-        // Consume the level 14 mace and give Sift Mace
-        main.shrink(1);
-        ItemStack sift = WeaponHelper.createSiftMace();
-        WeaponHelper.applyEnchants(sift, 14, true, player);
-        player.getInventory().add(sift);
-
-        state.incrementSiftMace();
-        state.markClaimedSift(player.getUUID());
-
-        player.sendSystemMessage(Component.literal("§b§l★ SIFT MACE CLAIMED! ★"));
-        player.sendSystemMessage(Component.literal("§7Your Level 14 Mace was converted into a Sift Mace."));
-        return 1;
-    }
-
     private static int fixHeld(CommandContext<CommandSourceStack> ctx, ServerPlayer target) {
         ItemStack main = target.getMainHandItem();
         if (!WeaponHelper.isLevelled(main) && !WeaponHelper.isGodWeapon(main) && !WeaponHelper.isSiftMace(main)) {
@@ -228,7 +178,7 @@ public class SiftCommand {
             ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
             WeaponState state = WeaponState.get(ctx.getSource().getServer());
             if (!state.canCreateSiftMace()) {
-                ctx.getSource().sendFailure(Component.literal("§cSift Mace limit reached (" + WeaponState.MAX_SIFT_MACE + ")"));
+                ctx.getSource().sendFailure(Component.literal("§cSift Mace limit reached (2/2)"));
                 return 0;
             }
             ItemStack stack = WeaponHelper.createSiftMace();
@@ -248,7 +198,7 @@ public class SiftCommand {
             ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
             WeaponState state = WeaponState.get(ctx.getSource().getServer());
             if (!state.canCreateGodMace()) {
-                ctx.getSource().sendFailure(Component.literal("§cGod Mace limit reached (" + WeaponState.MAX_GOD_MACE + ")"));
+                ctx.getSource().sendFailure(Component.literal("§cGod Mace limit reached (1/1)"));
                 return 0;
             }
             ItemStack stack = WeaponHelper.createGodMace();
@@ -268,7 +218,7 @@ public class SiftCommand {
             ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
             WeaponState state = WeaponState.get(ctx.getSource().getServer());
             if (!state.canCreateGodSpear()) {
-                ctx.getSource().sendFailure(Component.literal("§cGod Spear limit reached (" + WeaponState.MAX_GOD_SPEAR + ")"));
+                ctx.getSource().sendFailure(Component.literal("§cGod Spear limit reached (1/1)"));
                 return 0;
             }
             ItemStack stack = WeaponHelper.createGodSpear();

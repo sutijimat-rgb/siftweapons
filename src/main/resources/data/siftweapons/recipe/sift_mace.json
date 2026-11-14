@@ -1,0 +1,43 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "equipment",
+  "ingredients": [
+    "minecraft:mace",
+    "minecraft:diamond"
+  ],
+  "result": {
+    "id": "minecraft:mace",
+    "components": {
+      "minecraft:custom_name": {
+        "text": "Sift Mace",
+        "italic": false,
+        "color": "#55FFFF",
+        "bold": true
+      },
+      "minecraft:lore": [
+        {
+          "text": "Right-click: Dash",
+          "color": "aqua",
+          "italic": false
+        },
+        {
+          "text": "Passive: Strength + Speed + Haste",
+          "color": "gray",
+          "italic": false
+        },
+        {
+          "text": "Limited: 2 on server",
+          "color": "dark_gray",
+          "italic": false
+        }
+      ],
+      "minecraft:custom_data": {
+        "sift_type": "sift_mace",
+        "sift_level": 0
+      },
+      "minecraft:enchantments": {
+        "minecraft:vanishing_curse": 1
+      }
+    }
+  }
+}

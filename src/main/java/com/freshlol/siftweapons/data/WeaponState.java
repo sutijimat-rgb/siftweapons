@@ -1,20 +1,16 @@
 package com.freshlol.siftweapons.data;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import net.minecraft.server.MinecraftServer;
 
 public class WeaponState {
-    // Much easier to obtain now
-    public static final int MAX_SIFT_MACE = 32;
-    public static final int MAX_GOD_MACE = 5;
-    public static final int MAX_GOD_SPEAR = 5;
+    public static final int MAX_SIFT_MACE = 2;
+    public static final int MAX_GOD_MACE = 1;
+    public static final int MAX_GOD_SPEAR = 1;
 
     private static final Map<UUID, Boolean> firstJoinGiven = new HashMap<>();
-    private static final Set<UUID> claimedSift = new HashSet<>();
     private int siftMaceCount = 0;
     private int godMaceCount = 0;
     private int godSpearCount = 0;
@@ -68,20 +64,11 @@ public class WeaponState {
         firstJoinGiven.put(playerId, true);
     }
 
-    public boolean hasClaimedSift(UUID playerId) {
-        return claimedSift.contains(playerId);
-    }
-
-    public void markClaimedSift(UUID playerId) {
-        claimedSift.add(playerId);
-    }
-
     public void resetAll() {
         this.siftMaceCount = 0;
         this.godMaceCount = 0;
         this.godSpearCount = 0;
         firstJoinGiven.clear();
-        claimedSift.clear();
     }
 
     public void resetCounts() {
@@ -96,6 +83,5 @@ public class WeaponState {
 
     public void resetPlayer(UUID playerId) {
         firstJoinGiven.remove(playerId);
-        claimedSift.remove(playerId);
     }
 }
