@@ -21,10 +21,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
-/**
- * Mace abilities only on use/attack.
- * Spears are NEVER intercepted so vanilla spear combat (stab/dtap) works.
- */
 public class SiftMaceHandler {
     private static final Map<UUID, Long> lastDash = new HashMap<>();
 
@@ -39,8 +35,33 @@ public class SiftMaceHandler {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 applyPassivesFromInventory(player);
+                applySpearHungerProtect(player);
             }
         });
+    }
+
+    /** Level 8+ levelled spear OR god spear in main hand → hunger does not drain */
+    private static void applySpearHungerProtect(ServerPlayer player) {
+        ItemStack main = player.getMainHandItem();
+        boolean protect = false;
+
+        if (WeaponHelper.isGodSpear(main)) {
+            protect = true;
+        } else if (WeaponHelper.isLevelled(main) && WeaponHelper.getType(main).contains("spear")) {
+            if (WeaponHelper.getLevel(main) >= 8) {
+                protect = true;
+            }
+        }
+
+        if (!protect) return;
+
+        // Keep hunger full while lunging / holding the spear
+        var food = player.getFoodData();
+        food.setSaturation(Math.max(food.getSaturationLevel(), 10.0f));
+        if (food.getFoodLevel() < 20) {
+            food.setFoodLevel(20);
+        }
+        player.addEffect(new MobEffectInstance(MobEffects.SATURATION, 20, 0, true, false, false));
     }
 
     private static boolean isSpearStack(ItemStack stack) {
@@ -57,7 +78,7 @@ public class SiftMaceHandler {
 
         ItemStack stack = player.getItemInHand(hand);
 
-        // SPEARS: zero interception — vanilla combat only
+        // Spears: never intercept use (vanilla combat)
         if (isSpearStack(stack)) {
             return InteractionResult.PASS;
         }
@@ -164,7 +185,7 @@ public class SiftMaceHandler {
     }
 
     private static boolean canUseMaceAbility(ItemStack stack) {
-        return WeaponHelper.isLevelled(stack) && WeaponHelper.getType(stack).contains("mace")
+        return (WeaponHelper.isLevelled(stack) && WeaponHelper.getType(stack).contains("mace"))
             || WeaponHelper.isSiftMace(stack)
             || WeaponHelper.isGodMace(stack)
             || WeaponHelper.isRainbowMace(stack);
@@ -177,7 +198,6 @@ public class SiftMaceHandler {
 
         ItemStack stack = player.getItemInHand(hand);
 
-        // SPEARS: do not touch attack at all
         if (isSpearStack(stack)) {
             return InteractionResult.PASS;
         }
@@ -224,7 +244,6 @@ public class SiftMaceHandler {
                 }
             }
         } catch (Exception ignored) {
-            // never cancel the attack
         }
 
         return InteractionResult.PASS;
@@ -253,14 +272,17 @@ public class SiftMaceHandler {
             apply(player, MobEffects.FIRE_RESISTANCE, 0);
             return;
         }
+
+        // SIFT MACE — Resistance III (amplifier 2) + Fire Resistance (forced every tick)
         if (WeaponHelper.isSiftMace(best)) {
             apply(player, MobEffects.STRENGTH, 2);
             apply(player, MobEffects.SPEED, 2);
             apply(player, MobEffects.HASTE, 1);
-            apply(player, MobEffects.RESISTANCE, 2);
-            apply(player, MobEffects.FIRE_RESISTANCE, 0);
+            apply(player, MobEffects.RESISTANCE, 2);      // Resistance III
+            apply(player, MobEffects.FIRE_RESISTANCE, 0); // Fire Resistance
             return;
         }
+
         if (WeaponHelper.isGodSpear(best)) {
             apply(player, MobEffects.STRENGTH, 2);
             apply(player, MobEffects.SPEED, 1);
@@ -312,7 +334,8 @@ public class SiftMaceHandler {
         return -1;
     }
 
+    /** Ambient passives — longer duration so they never flicker off */
     private static void apply(ServerPlayer player, net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect, int amplifier) {
-        player.addEffect(new MobEffectInstance(effect, 40, amplifier, false, false, true));
+        player.addEffect(new MobEffectInstance(effect, 80, amplifier, true, true, true));
     }
 }

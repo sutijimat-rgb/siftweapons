@@ -73,7 +73,6 @@ public class WeaponHelper {
     }
 
     public static void applyEnchants(ItemStack stack, int level, boolean isMace, ServerPlayer player) {
-        // Sift / God weapons get their own full enchant loadout
         if (isSiftMace(stack)) {
             applySiftMaceEnchants(stack, player);
             return;
@@ -115,7 +114,6 @@ public class WeaponHelper {
         stack.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
     }
 
-    /** Maxed Sift Mace enchants (works like a sword too via Sharpness V) */
     public static void applySiftMaceEnchants(ItemStack stack, ServerPlayer player) {
         RegistryAccess registry = player.level().registryAccess();
         var enchantRegistry = registry.lookupOrThrow(Registries.ENCHANTMENT);
@@ -176,7 +174,8 @@ public class WeaponHelper {
         stack.set(DataComponents.CUSTOM_NAME, Component.literal("Sift Mace").withStyle(s -> s.withItalic(false).withColor(0x55FFFF).withBold(true)));
         stack.set(DataComponents.LORE, new ItemLore(List.of(
             Component.literal("§bRight-click: Dash"),
-            Component.literal("§7Passive: Strength III + Speed III + Haste"),
+            Component.literal("§7Passive: Strength III · Speed III · Haste II"),
+            Component.literal("§7Passive: §aResistance III §7· §6Fire Resistance"),
             Component.literal("§eWB2 · Density 6 · Breach 5 · FA3 · Sharp 5 · Mending"),
             Component.literal("§8Limited: 2 on server")
         )));
@@ -188,8 +187,8 @@ public class WeaponHelper {
         setTypeAndLevel(stack, TYPE_GOD_MACE, 0);
         stack.set(DataComponents.CUSTOM_NAME, Component.literal("God Mace").withStyle(s -> s.withItalic(false).withColor(0xFF55FF).withBold(true)));
         stack.set(DataComponents.LORE, new ItemLore(List.of(
-            Component.literal("§dRight-click: Massive Dash (~30 blocks)"),
-            Component.literal("§dPassive: Strength IV + Speed III + Resistance II + Haste"),
+            Component.literal("§dRight-click: Massive Dash (no cooldown)"),
+            Component.literal("§dPassive: Strength IV + Speed III + Resistance II + Haste + Fire Res"),
             Component.literal("§dOn kill: Shockwave knockback"),
             Component.literal("§8Limited: 1 on server")
         )));
@@ -201,8 +200,8 @@ public class WeaponHelper {
         setTypeAndLevel(stack, TYPE_GOD_SPEAR, 0);
         stack.set(DataComponents.CUSTOM_NAME, Component.literal("God Spear").withStyle(s -> s.withItalic(false).withColor(0xFFAA00).withBold(true)));
         stack.set(DataComponents.LORE, new ItemLore(List.of(
-            Component.literal("§6Passive: Strength III + Speed II + Jump Boost II + Haste"),
-            Component.literal("§6On kill: Lightning strike + power surge"),
+            Component.literal("§6Passive: Strength III + Speed II + Jump Boost II + Haste + Fire Res"),
+            Component.literal("§6Hunger does not drain while held"),
             Component.literal("§8Limited: 1 on server")
         )));
         return stack;
@@ -223,7 +222,9 @@ public class WeaponHelper {
         }
 
         String dashLine;
-        if (level <= 6) {
+        if (!isMace) {
+            dashLine = level >= 8 ? "§aHunger locked while held (Lvl 8+)" : "§8Hunger lock at Level 8";
+        } else if (level <= 6) {
             dashLine = "§8Dash: unlocks at Level 7";
         } else if (level <= 8) {
             dashLine = "§7Dash: Small";
