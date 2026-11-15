@@ -27,7 +27,6 @@ public class SiftMaceHandler {
 
     private static final long SIFT_DASH_COOLDOWN_MS = 800L;
     private static final long DASH_COOLDOWN_MS = 2500L;
-    // God weapons: no cooldown (0)
     private static final long GOD_DASH_COOLDOWN_MS = 0L;
     private static final long LUNGE_HUNGER_PROTECT_MS = 4000L;
 
@@ -42,7 +41,6 @@ public class SiftMaceHandler {
 
                 Long until = hungerProtectUntil.get(player.getUUID());
                 if (until != null && now < until) {
-                    // Keep hunger from draining (26.3-safe: saturation + refresh food)
                     player.addEffect(new MobEffectInstance(MobEffects.SATURATION, 10, 0, true, false, false));
                     var food = player.getFoodData();
                     food.setSaturation(Math.max(food.getSaturationLevel(), 8.0f));
@@ -67,19 +65,32 @@ public class SiftMaceHandler {
         boolean sift = WeaponHelper.isSiftMace(stack);
         boolean rainbow = WeaponHelper.isRainbowMace(stack);
         int level = WeaponHelper.getLevel(stack);
-        boolean isMace = WeaponHelper.getType(stack).contains("mace");
+        boolean isMace = WeaponHelper.getType(stack).contains("mace") || sift || WeaponHelper.isGodMace(stack);
         boolean isSpear = WeaponHelper.getType(stack).contains("spear") || WeaponHelper.isGodSpear(stack);
 
-        if (!god && !sift && level > 0 && level <= 6) {
+        /*
+         * SPEARS: never intercept normal right-click.
+         * Vanilla spear dtap / charge / combat must work.
+         * Dash/lunge only when sneaking (shift + right-click).
+         */
+        if (isSpear && !player.isShiftKeyDown()) {
             return InteractionResult.PASS;
         }
-        if (!god && !sift && level < 7 && !rainbow) {
+
+        // Levelled spears only get custom lunge from level 7+ (still need shift)
+        if (isSpear && !god && level > 0 && level <= 6) {
+            return InteractionResult.PASS;
+        }
+        if (!god && !sift && !isSpear && level > 0 && level <= 6) {
+            return InteractionResult.PASS;
+        }
+        if (!god && !sift && level < 7 && !rainbow && !isSpear) {
             return InteractionResult.PASS;
         }
 
         long cooldown;
         if (god) {
-            cooldown = GOD_DASH_COOLDOWN_MS; // infinite / no cooldown
+            cooldown = GOD_DASH_COOLDOWN_MS;
         } else if (sift) {
             cooldown = SIFT_DASH_COOLDOWN_MS;
         } else {
@@ -95,13 +106,13 @@ public class SiftMaceHandler {
                     ? String.format("%.1fs", remainingMs / 1000.0)
                     : ((remainingMs + 999) / 1000) + "s";
                 serverPlayer.sendSystemMessage(Component.literal("§cAbility on cooldown (" + left + ")"), true);
-                return InteractionResult.FAIL;
+                // PASS for spears so vanilla use still works; FAIL only for maces
+                return isSpear ? InteractionResult.PASS : InteractionResult.FAIL;
             }
         }
 
         Vec3 look = player.getLookAngle().normalize();
 
-        // Sift Mace: full look-direction dash
         if (sift) {
             double power = 3.6;
             double vx = look.x * power;
@@ -150,15 +161,15 @@ public class SiftMaceHandler {
             msg = isMace ? "§7Dash" : "§7Lunge";
         }
 
-        // God weapons also fully follow look (up/down)
         double vx, vy, vz;
-        if (god) {
+        if (god || isSpear) {
+            // Spears + god: follow look fully
             vx = look.x * power;
             vy = look.y * power;
             vz = look.z * power;
             if (look.y < -0.35) vy *= 1.4;
             else if (look.y > 0.35) vy *= 1.3;
-            else vy = Math.max(yBoost * 0.5, vy);
+            else if (god) vy = Math.max(yBoost * 0.5, vy);
         } else {
             vx = look.x * power;
             vy = Math.max(yBoost, look.y * power + yBoost * 0.3);
@@ -169,7 +180,6 @@ public class SiftMaceHandler {
         serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(player));
         lastDash.put(player.getUUID(), now);
 
-        // Level 8+ spear lunge: hunger does not drain
         if (isSpear && (god || level >= 8)) {
             hungerProtectUntil.put(player.getUUID(), now + LUNGE_HUNGER_PROTECT_MS);
             serverPlayer.addEffect(new MobEffectInstance(MobEffects.SATURATION, 40, 0, true, false, false));
@@ -265,8 +275,8 @@ public class SiftMaceHandler {
             apply(player, MobEffects.STRENGTH, 2);
             apply(player, MobEffects.SPEED, 2);
             apply(player, MobEffects.HASTE, 1);
-            apply(player, MobEffects.RESISTANCE, 2); // Resistance III
-            apply(player, MobEffects.FIRE_RESISTANCE, 0); // Fire Resistance
+            apply(player, MobEffects.RESISTANCE, 2);
+            apply(player, MobEffects.FIRE_RESISTANCE, 0);
             return;
         }
         if (WeaponHelper.isGodSpear(best)) {
