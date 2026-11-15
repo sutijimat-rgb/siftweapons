@@ -21,34 +21,33 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
+/**
+ * Mace abilities only on use/attack.
+ * Spears are NEVER intercepted so vanilla spear combat (stab/dtap) works.
+ */
 public class SiftMaceHandler {
     private static final Map<UUID, Long> lastDash = new HashMap<>();
-    private static final Map<UUID, Long> hungerProtectUntil = new HashMap<>();
 
     private static final long SIFT_DASH_COOLDOWN_MS = 800L;
     private static final long DASH_COOLDOWN_MS = 2500L;
     private static final long GOD_DASH_COOLDOWN_MS = 0L;
-    private static final long LUNGE_HUNGER_PROTECT_MS = 4000L;
 
     public static void register() {
         UseItemCallback.EVENT.register(SiftMaceHandler::onUseItem);
         AttackEntityCallback.EVENT.register(SiftMaceHandler::onAttack);
 
         ServerTickEvents.END_SERVER_TICK.register(server -> {
-            long now = System.currentTimeMillis();
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 applyPassivesFromInventory(player);
-
-                Long until = hungerProtectUntil.get(player.getUUID());
-                if (until != null && now < until) {
-                    player.addEffect(new MobEffectInstance(MobEffects.SATURATION, 10, 0, true, false, false));
-                    var food = player.getFoodData();
-                    food.setSaturation(Math.max(food.getSaturationLevel(), 8.0f));
-                } else if (until != null) {
-                    hungerProtectUntil.remove(player.getUUID());
-                }
             }
         });
+    }
+
+    private static boolean isSpearStack(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        if (WeaponHelper.isGodSpear(stack)) return true;
+        String type = WeaponHelper.getType(stack);
+        return type != null && type.contains("spear");
     }
 
     private static InteractionResult onUseItem(Player player, Level world, InteractionHand hand) {
@@ -57,46 +56,29 @@ public class SiftMaceHandler {
         }
 
         ItemStack stack = player.getItemInHand(hand);
-        if (!canUseAbility(stack)) {
+
+        // SPEARS: zero interception — vanilla combat only
+        if (isSpearStack(stack)) {
             return InteractionResult.PASS;
         }
 
-        boolean god = WeaponHelper.isGodMace(stack) || WeaponHelper.isGodSpear(stack);
+        if (!canUseMaceAbility(stack)) {
+            return InteractionResult.PASS;
+        }
+
+        boolean god = WeaponHelper.isGodMace(stack);
         boolean sift = WeaponHelper.isSiftMace(stack);
         boolean rainbow = WeaponHelper.isRainbowMace(stack);
         int level = WeaponHelper.getLevel(stack);
-        boolean isMace = WeaponHelper.getType(stack).contains("mace") || sift || WeaponHelper.isGodMace(stack);
-        boolean isSpear = WeaponHelper.getType(stack).contains("spear") || WeaponHelper.isGodSpear(stack);
 
-        /*
-         * SPEARS: never intercept normal right-click.
-         * Vanilla spear dtap / charge / combat must work.
-         * Dash/lunge only when sneaking (shift + right-click).
-         */
-        if (isSpear && !player.isShiftKeyDown()) {
+        if (!god && !sift && level > 0 && level <= 6) {
+            return InteractionResult.PASS;
+        }
+        if (!god && !sift && level < 7 && !rainbow) {
             return InteractionResult.PASS;
         }
 
-        // Levelled spears only get custom lunge from level 7+ (still need shift)
-        if (isSpear && !god && level > 0 && level <= 6) {
-            return InteractionResult.PASS;
-        }
-        if (!god && !sift && !isSpear && level > 0 && level <= 6) {
-            return InteractionResult.PASS;
-        }
-        if (!god && !sift && level < 7 && !rainbow && !isSpear) {
-            return InteractionResult.PASS;
-        }
-
-        long cooldown;
-        if (god) {
-            cooldown = GOD_DASH_COOLDOWN_MS;
-        } else if (sift) {
-            cooldown = SIFT_DASH_COOLDOWN_MS;
-        } else {
-            cooldown = DASH_COOLDOWN_MS;
-        }
-
+        long cooldown = god ? GOD_DASH_COOLDOWN_MS : (sift ? SIFT_DASH_COOLDOWN_MS : DASH_COOLDOWN_MS);
         long now = System.currentTimeMillis();
         if (cooldown > 0) {
             Long last = lastDash.get(player.getUUID());
@@ -106,8 +88,7 @@ public class SiftMaceHandler {
                     ? String.format("%.1fs", remainingMs / 1000.0)
                     : ((remainingMs + 999) / 1000) + "s";
                 serverPlayer.sendSystemMessage(Component.literal("§cAbility on cooldown (" + left + ")"), true);
-                // PASS for spears so vanilla use still works; FAIL only for maces
-                return isSpear ? InteractionResult.PASS : InteractionResult.FAIL;
+                return InteractionResult.FAIL;
             }
         }
 
@@ -142,34 +123,33 @@ public class SiftMaceHandler {
         if (god) {
             power = 4.2;
             yBoost = 5.2;
-            msg = isMace ? "§d§lGOD DASH!" : "§6§lGOD LUNGE!";
+            msg = "§d§lGOD DASH!";
         } else if (level >= 13) {
             power = 3.4;
             yBoost = 3.2;
-            msg = isMace ? "§c§lMAX DASH!" : "§e§lMAX LUNGE!";
+            msg = "§c§lMAX DASH!";
         } else if (level >= 11) {
             power = 3.0;
             yBoost = 2.6;
-            msg = isMace ? "§cPower Dash!" : "§ePower Lunge!";
+            msg = "§cPower Dash!";
         } else if (level >= 9) {
             power = 2.5;
             yBoost = 2.0;
-            msg = isMace ? "§bDash!" : "§bLunge!";
+            msg = "§bDash!";
         } else {
             power = 2.0;
             yBoost = 1.4;
-            msg = isMace ? "§7Dash" : "§7Lunge";
+            msg = "§7Dash";
         }
 
         double vx, vy, vz;
-        if (god || isSpear) {
-            // Spears + god: follow look fully
+        if (god) {
             vx = look.x * power;
             vy = look.y * power;
             vz = look.z * power;
             if (look.y < -0.35) vy *= 1.4;
             else if (look.y > 0.35) vy *= 1.3;
-            else if (god) vy = Math.max(yBoost * 0.5, vy);
+            else vy = Math.max(yBoost * 0.5, vy);
         } else {
             vx = look.x * power;
             vy = Math.max(yBoost, look.y * power + yBoost * 0.3);
@@ -179,70 +159,72 @@ public class SiftMaceHandler {
         player.setDeltaMovement(vx, vy, vz);
         serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(player));
         lastDash.put(player.getUUID(), now);
-
-        if (isSpear && (god || level >= 8)) {
-            hungerProtectUntil.put(player.getUUID(), now + LUNGE_HUNGER_PROTECT_MS);
-            serverPlayer.addEffect(new MobEffectInstance(MobEffects.SATURATION, 40, 0, true, false, false));
-            serverPlayer.getFoodData().setSaturation(
-                Math.max(serverPlayer.getFoodData().getSaturationLevel(), 8.0f)
-            );
-        }
-
         serverPlayer.sendSystemMessage(Component.literal(msg), true);
         return InteractionResult.SUCCESS;
     }
 
-    private static boolean canUseAbility(ItemStack stack) {
-        return WeaponHelper.isLevelled(stack)
+    private static boolean canUseMaceAbility(ItemStack stack) {
+        return WeaponHelper.isLevelled(stack) && WeaponHelper.getType(stack).contains("mace")
             || WeaponHelper.isSiftMace(stack)
             || WeaponHelper.isGodMace(stack)
-            || WeaponHelper.isGodSpear(stack);
+            || WeaponHelper.isRainbowMace(stack);
     }
 
     private static InteractionResult onAttack(Player player, Level world, InteractionHand hand, Entity entity, net.minecraft.world.phys.EntityHitResult hit) {
         if (world.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
             return InteractionResult.PASS;
         }
+
+        ItemStack stack = player.getItemInHand(hand);
+
+        // SPEARS: do not touch attack at all
+        if (isSpearStack(stack)) {
+            return InteractionResult.PASS;
+        }
+
+        if (!canUseMaceAbility(stack)) {
+            return InteractionResult.PASS;
+        }
+
         if (!(entity instanceof LivingEntity target)) {
             return InteractionResult.PASS;
         }
 
-        ItemStack stack = player.getItemInHand(hand);
-        if (!canUseAbility(stack)) {
-            return InteractionResult.PASS;
-        }
+        try {
+            int level = WeaponHelper.getLevel(stack);
+            boolean god = WeaponHelper.isGodMace(stack);
+            boolean rainbow = WeaponHelper.isRainbowMace(stack);
+            boolean sift = WeaponHelper.isSiftMace(stack);
 
-        int level = WeaponHelper.getLevel(stack);
-        boolean god = WeaponHelper.isGodMace(stack) || WeaponHelper.isGodSpear(stack);
-        boolean rainbow = WeaponHelper.isRainbowMace(stack);
-        boolean sift = WeaponHelper.isSiftMace(stack);
-
-        if (god || rainbow || level >= 10 || sift) {
-            if (target instanceof ServerPlayer victim && victim.isBlocking()) {
-                ItemStack blocking = victim.getUseItem();
-                if (!blocking.isEmpty()) {
-                    victim.getCooldowns().addCooldown(blocking, 100);
+            if (god || rainbow || level >= 10 || sift) {
+                if (target instanceof ServerPlayer victim && victim.isBlocking()) {
+                    ItemStack blocking = victim.getUseItem();
+                    if (!blocking.isEmpty()) {
+                        victim.getCooldowns().addCooldown(blocking, 100);
+                    }
+                    victim.stopUsingItem();
+                    serverPlayer.sendSystemMessage(Component.literal("§c§lSHIELD DISABLED!"), true);
                 }
-                victim.stopUsingItem();
-                serverPlayer.sendSystemMessage(Component.literal("§c§lSHIELD DISABLED!"), true);
             }
-        }
 
-        if (god || rainbow || level >= 7 || sift) {
-            int duration = god ? 60 : (sift || rainbow || level >= 12 ? 40 : 25);
-            target.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, duration, 1, false, true, true));
-            target.addEffect(new MobEffectInstance(MobEffects.MINING_FATIGUE, duration, 0, false, true, true));
-            if (god || sift || level >= 12) {
-                target.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, duration / 2, 0, false, true, true));
+            if (god || rainbow || level >= 7 || sift) {
+                int duration = god ? 60 : (sift || rainbow || level >= 12 ? 40 : 25);
+                target.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, duration, 1, false, true, true));
+                target.addEffect(new MobEffectInstance(MobEffects.MINING_FATIGUE, duration, 0, false, true, true));
+                if (god || sift || level >= 12) {
+                    target.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, duration / 2, 0, false, true, true));
+                }
             }
-        }
 
-        if (god || sift || level >= 11) {
-            Vec3 away = target.position().subtract(player.position()).normalize().scale(god ? 1.6 : 1.1);
-            target.setDeltaMovement(target.getDeltaMovement().add(away.x, 0.35, away.z));
-            if (target instanceof ServerPlayer tp) {
-                tp.connection.send(new ClientboundSetEntityMotionPacket(target));
+            if (god || sift || level >= 11) {
+                Vec3 away = target.position().subtract(player.position()).normalize().scale(god ? 1.6 : 1.1);
+                target.setDeltaMovement(target.getDeltaMovement().add(away.x, 0.35, away.z));
+                if (target instanceof ServerPlayer tp) {
+                    tp.connection.send(new ClientboundSetEntityMotionPacket(target));
+                }
             }
+        } catch (Exception ignored) {
+            // never cancel the attack
         }
 
         return InteractionResult.PASS;
