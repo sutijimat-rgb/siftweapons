@@ -10,14 +10,16 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.Vec3;
 
 /**
- * Wind Charge Reset tech (26.3):
- * While mid-air, look down, throw a wind charge → stop / stall in place.
- * Lets mace/spear players reset momentum for smash setups.
+ * Wind Charge Reset:
+ * Mid-air + looking clearly downward + throw wind charge → stall.
+ * Uses pitch (XRot) so looking sideways/up never triggers.
  */
 public class WindChargeResetHandler {
+
+    /** Pitch degrees: 0 = horizontal, +90 = straight down. Need at least this much down. */
+    private static final float MIN_DOWN_PITCH = 50.0f;
 
     public static void register() {
         UseItemCallback.EVENT.register(WindChargeResetHandler::onUse);
@@ -34,25 +36,22 @@ public class WindChargeResetHandler {
         }
 
         // Must be airborne
-        if (player.onGround()) {
+        if (player.onGround() || player.isInWater() || player.onClimbable()) {
             return InteractionResult.PASS;
         }
 
-        Vec3 look = player.getLookAngle();
-
-        // Looking sufficiently downward
-        if (look.y > -0.35) {
+        // Pitch > 0 means looking down. Require a clear downward aim.
+        float pitch = player.getXRot();
+        if (pitch < MIN_DOWN_PITCH) {
             return InteractionResult.PASS;
         }
 
-        // Wind Charge Reset: kill momentum and stall mid-air
-        // Slight upward nudge so you don't instantly fall through the stall
-        player.setDeltaMovement(0.0, 0.08, 0.0);
+        // Stall mid-air (only this case)
+        player.setDeltaMovement(0.0, 0.06, 0.0);
         serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(player));
-
         serverPlayer.sendSystemMessage(Component.literal("§b§lWIND CHARGE RESET"), true);
 
-        // PASS so the wind charge is still thrown normally
+        // Still throw the wind charge normally
         return InteractionResult.PASS;
     }
 }
