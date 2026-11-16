@@ -9,11 +9,13 @@ public class WeaponState {
     public static final int MAX_SIFT_MACE = 2;
     public static final int MAX_GOD_MACE = 1;
     public static final int MAX_GOD_SPEAR = 1;
+    public static final int MAX_GOD_CROSSBOW = 1;
 
     private static final Map<UUID, Boolean> firstJoinGiven = new HashMap<>();
     private int siftMaceCount = 0;
     private int godMaceCount = 0;
     private int godSpearCount = 0;
+    private int godCrossbowCount = 0;
     private static WeaponState INSTANCE = new WeaponState();
 
     public static WeaponState get(MinecraftServer server) {
@@ -56,6 +58,18 @@ public class WeaponState {
         return this.godSpearCount;
     }
 
+    public boolean canCreateGodCrossbow() {
+        return this.godCrossbowCount < MAX_GOD_CROSSBOW;
+    }
+
+    public void incrementGodCrossbow() {
+        ++this.godCrossbowCount;
+    }
+
+    public int getGodCrossbowCount() {
+        return this.godCrossbowCount;
+    }
+
     public boolean hasReceivedStarter(UUID playerId) {
         return firstJoinGiven.getOrDefault(playerId, false);
     }
@@ -68,6 +82,7 @@ public class WeaponState {
         this.siftMaceCount = 0;
         this.godMaceCount = 0;
         this.godSpearCount = 0;
+        this.godCrossbowCount = 0;
         firstJoinGiven.clear();
     }
 
@@ -75,6 +90,7 @@ public class WeaponState {
         this.siftMaceCount = 0;
         this.godMaceCount = 0;
         this.godSpearCount = 0;
+        this.godCrossbowCount = 0;
     }
 
     public void resetJoins() {

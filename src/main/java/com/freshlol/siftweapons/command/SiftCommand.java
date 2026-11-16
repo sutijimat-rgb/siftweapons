@@ -30,18 +30,18 @@ public class SiftCommand {
                         "§6=== Sift Weapons Commands ===\n" +
                         "§e/sift info §7- show weapon limits\n" +
                         "§e/sift give <player> <type> [level] §7- give a weapon\n" +
-                        "  types: spear, mace, rainbow, sift, godmace, godspear\n" +
+                        "  types: spear, mace, rainbow, sift, godmace, godspear, godcrossbow\n" +
                         "§e/sift setlevel <player> <level> §7- set level of held levelled weapon\n" +
                         "§e/sift fix [player] §7- re-apply vanishing + enchants\n" +
                         "§e/sift reset §7- reset all\n" +
-                        "§aCraft Sift Mace: §fmace + diamond §7(shapeless)"
+                        "§aShulker craft: §f8 iron + chest in middle"
                     ), false);
                     return 1;
                 }))
                 .then(Commands.literal("info").executes(ctx -> {
                     WeaponState s = WeaponState.get(ctx.getSource().getServer());
                     ctx.getSource().sendSuccess(() -> Component.literal(
-                        "§6Sift Mace: §f" + s.getSiftMaceCount() + "/2  §dGod Mace: §f" + s.getGodMaceCount() + "/1  §6God Spear: §f" + s.getGodSpearCount() + "/1"
+                        "§6Sift Mace: §f" + s.getSiftMaceCount() + "/2  §dGod Mace: §f" + s.getGodMaceCount() + "/1  §6God Spear: §f" + s.getGodSpearCount() + "/1  §cGod Crossbow: §f" + s.getGodCrossbowCount() + "/1"
                     ), false);
                     return 1;
                 }))
@@ -62,6 +62,7 @@ public class SiftCommand {
                         .then(Commands.literal("sift").executes(SiftCommand::giveSiftMace))
                         .then(Commands.literal("godmace").executes(SiftCommand::giveGodMace))
                         .then(Commands.literal("godspear").executes(SiftCommand::giveGodSpear))
+                        .then(Commands.literal("godcrossbow").executes(SiftCommand::giveGodCrossbow))
                     )
                 )
                 .then(Commands.literal("setlevel")
@@ -130,6 +131,11 @@ public class SiftCommand {
         if (!WeaponHelper.isLevelled(main) && !WeaponHelper.isGodWeapon(main) && !WeaponHelper.isSiftMace(main)) {
             ctx.getSource().sendFailure(Component.literal("§cNot holding a Sift weapon."));
             return 0;
+        }
+        if (WeaponHelper.isGodCrossbow(main)) {
+            WeaponHelper.applyGodCrossbowEnchants(main, target);
+            ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Fixed God Crossbow."), true);
+            return 1;
         }
         boolean isMace = WeaponHelper.getType(main).contains("mace");
         int level = WeaponHelper.getLevel(main);
@@ -226,6 +232,26 @@ public class SiftCommand {
             target.getInventory().add(stack);
             state.incrementGodSpear();
             ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Gave God Spear to " + target.getName().getString()), true);
+            return 1;
+        } catch (Exception e) {
+            ctx.getSource().sendFailure(Component.literal("§cError: " + e.getMessage()));
+            return 0;
+        }
+    }
+
+    private static int giveGodCrossbow(CommandContext<CommandSourceStack> ctx) {
+        try {
+            ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
+            WeaponState state = WeaponState.get(ctx.getSource().getServer());
+            if (!state.canCreateGodCrossbow()) {
+                ctx.getSource().sendFailure(Component.literal("§cGod Crossbow limit reached (1/1)"));
+                return 0;
+            }
+            ItemStack stack = WeaponHelper.createGodCrossbow();
+            WeaponHelper.applyGodCrossbowEnchants(stack, target);
+            target.getInventory().add(stack);
+            state.incrementGodCrossbow();
+            ctx.getSource().sendSuccess(() -> Component.literal("§a[Sift] Gave God Crossbow to " + target.getName().getString()), true);
             return 1;
         } catch (Exception e) {
             ctx.getSource().sendFailure(Component.literal("§cError: " + e.getMessage()));

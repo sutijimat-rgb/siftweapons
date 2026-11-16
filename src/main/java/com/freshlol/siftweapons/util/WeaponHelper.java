@@ -27,6 +27,7 @@ public class WeaponHelper {
     public static final String TYPE_SIFT_MACE = "sift_mace";
     public static final String TYPE_GOD_MACE = "god_mace";
     public static final String TYPE_GOD_SPEAR = "god_spear";
+    public static final String TYPE_GOD_CROSSBOW = "god_crossbow";
     public static final String TYPE_RAINBOW_MACE = "rainbow_mace";
 
     public static Item getSpearItemForLevel(int level) {
@@ -83,6 +84,10 @@ public class WeaponHelper {
         }
         if (isGodSpear(stack)) {
             applyGodSpearEnchants(stack, player);
+            return;
+        }
+        if (isGodCrossbow(stack)) {
+            applyGodCrossbowEnchants(stack, player);
             return;
         }
 
@@ -164,6 +169,23 @@ public class WeaponHelper {
         stack.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
     }
 
+    /** God Crossbow: Quick Charge 8, Flame, Multishot, Piercing 4, Unbreaking 3, Mending, Vanishing */
+    public static void applyGodCrossbowEnchants(ItemStack stack, ServerPlayer player) {
+        RegistryAccess registry = player.level().registryAccess();
+        var enchantRegistry = registry.lookupOrThrow(Registries.ENCHANTMENT);
+        ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(ItemEnchantments.EMPTY);
+
+        setEnchant(mutable, enchantRegistry, Enchantments.QUICK_CHARGE, 8);
+        setEnchant(mutable, enchantRegistry, Enchantments.FLAME, 1);
+        setEnchant(mutable, enchantRegistry, Enchantments.MULTISHOT, 1);
+        setEnchant(mutable, enchantRegistry, Enchantments.PIERCING, 4);
+        setEnchant(mutable, enchantRegistry, Enchantments.UNBREAKING, 3);
+        setEnchant(mutable, enchantRegistry, Enchantments.MENDING, 1);
+        setEnchant(mutable, enchantRegistry, Enchantments.VANISHING_CURSE, 1);
+
+        stack.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
+    }
+
     private static void setEnchant(ItemEnchantments.Mutable mutable, net.minecraft.core.HolderLookup.RegistryLookup<Enchantment> registry, ResourceKey<Enchantment> key, int level) {
         registry.get(key).ifPresent(holder -> mutable.set(holder, level));
     }
@@ -202,6 +224,18 @@ public class WeaponHelper {
         stack.set(DataComponents.LORE, new ItemLore(List.of(
             Component.literal("§6Passive: Strength III + Speed II + Jump Boost II + Haste + Fire Res"),
             Component.literal("§6Hunger does not drain while held"),
+            Component.literal("§8Limited: 1 on server")
+        )));
+        return stack;
+    }
+
+    public static ItemStack createGodCrossbow() {
+        ItemStack stack = new ItemStack((ItemLike) Items.CROSSBOW);
+        setTypeAndLevel(stack, TYPE_GOD_CROSSBOW, 0);
+        stack.set(DataComponents.CUSTOM_NAME, Component.literal("God Crossbow").withStyle(s -> s.withItalic(false).withColor(0xFF5555).withBold(true)));
+        stack.set(DataComponents.LORE, new ItemLore(List.of(
+            Component.literal("§cQuick Charge VIII · Flame · Multishot · Piercing IV"),
+            Component.literal("§cUnbreaking III · Mending · Vanishing"),
             Component.literal("§8Limited: 1 on server")
         )));
         return stack;
@@ -295,12 +329,16 @@ public class WeaponHelper {
         return TYPE_GOD_SPEAR.equals(getType(stack));
     }
 
+    public static boolean isGodCrossbow(ItemStack stack) {
+        return TYPE_GOD_CROSSBOW.equals(getType(stack));
+    }
+
     public static boolean isSpecialMace(ItemStack stack) {
         return isSiftMace(stack) || isGodMace(stack);
     }
 
     public static boolean isGodWeapon(ItemStack stack) {
-        return isGodMace(stack) || isGodSpear(stack);
+        return isGodMace(stack) || isGodSpear(stack) || isGodCrossbow(stack);
     }
 
     public static int getLevel(ItemStack stack) {
