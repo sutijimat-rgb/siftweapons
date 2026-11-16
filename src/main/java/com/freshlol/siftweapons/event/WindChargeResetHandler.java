@@ -15,14 +15,14 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 
 /**
- * Wind Charge Reset: mid-air + look down + throw → short stall.
- * Cooldown prevents hold-right-click floating forever.
+ * Wind Charge Reset (balanced):
+ * Mid-air + look down (pitch >= 50) + throw → brief stall.
+ * 1 second cooldown — not spam float, not too slow for tech.
  */
 public class WindChargeResetHandler {
 
     private static final float MIN_DOWN_PITCH = 50.0f;
-    /** Min time between resets per player (ms) */
-    private static final long RESET_COOLDOWN_MS = 1500L;
+    private static final long RESET_COOLDOWN_MS = 1000L; // 1s — balanced
 
     private static final Map<UUID, Long> lastReset = new HashMap<>();
 
@@ -44,20 +44,19 @@ public class WindChargeResetHandler {
             return InteractionResult.PASS;
         }
 
-        float pitch = player.getXRot();
-        if (pitch < MIN_DOWN_PITCH) {
+        if (player.getXRot() < MIN_DOWN_PITCH) {
             return InteractionResult.PASS;
         }
 
         long now = System.currentTimeMillis();
         Long last = lastReset.get(player.getUUID());
         if (last != null && now - last < RESET_COOLDOWN_MS) {
-            // On cooldown: still throw charge, but no stall spam
             return InteractionResult.PASS;
         }
 
-        // One short stall, then must wait for cooldown
-        player.setDeltaMovement(0.0, 0.05, 0.0);
+        // Light stall — kills fall speed briefly, does not hover
+        var motion = player.getDeltaMovement();
+        player.setDeltaMovement(motion.x * 0.15, 0.04, motion.z * 0.15);
         serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(player));
         lastReset.put(player.getUUID(), now);
         serverPlayer.sendSystemMessage(Component.literal("§b§lWIND CHARGE RESET"), true);
