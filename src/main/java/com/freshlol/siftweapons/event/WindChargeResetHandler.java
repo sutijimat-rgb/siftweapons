@@ -1,5 +1,8 @@
 package com.freshlol.siftweapons.event;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
@@ -12,14 +15,16 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 
 /**
- * Wind Charge Reset:
- * Mid-air + looking clearly downward + throw wind charge → stall.
- * Uses pitch (XRot) so looking sideways/up never triggers.
+ * Wind Charge Reset: mid-air + look down + throw → short stall.
+ * Cooldown prevents hold-right-click floating forever.
  */
 public class WindChargeResetHandler {
 
-    /** Pitch degrees: 0 = horizontal, +90 = straight down. Need at least this much down. */
     private static final float MIN_DOWN_PITCH = 50.0f;
+    /** Min time between resets per player (ms) */
+    private static final long RESET_COOLDOWN_MS = 1500L;
+
+    private static final Map<UUID, Long> lastReset = new HashMap<>();
 
     public static void register() {
         UseItemCallback.EVENT.register(WindChargeResetHandler::onUse);
@@ -35,23 +40,28 @@ public class WindChargeResetHandler {
             return InteractionResult.PASS;
         }
 
-        // Must be airborne
         if (player.onGround() || player.isInWater() || player.onClimbable()) {
             return InteractionResult.PASS;
         }
 
-        // Pitch > 0 means looking down. Require a clear downward aim.
         float pitch = player.getXRot();
         if (pitch < MIN_DOWN_PITCH) {
             return InteractionResult.PASS;
         }
 
-        // Stall mid-air (only this case)
-        player.setDeltaMovement(0.0, 0.06, 0.0);
+        long now = System.currentTimeMillis();
+        Long last = lastReset.get(player.getUUID());
+        if (last != null && now - last < RESET_COOLDOWN_MS) {
+            // On cooldown: still throw charge, but no stall spam
+            return InteractionResult.PASS;
+        }
+
+        // One short stall, then must wait for cooldown
+        player.setDeltaMovement(0.0, 0.05, 0.0);
         serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(player));
+        lastReset.put(player.getUUID(), now);
         serverPlayer.sendSystemMessage(Component.literal("§b§lWIND CHARGE RESET"), true);
 
-        // Still throw the wind charge normally
         return InteractionResult.PASS;
     }
 }
