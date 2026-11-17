@@ -15,14 +15,13 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 
 /**
- * Wind Charge Reset (balanced):
- * Mid-air + look down (pitch >= 50) + throw → brief stall.
- * 1 second cooldown — not spam float, not too slow for tech.
+ * Wind Charge Reset — a little stronger:
+ * Mid-air + look down + throw → clearer stall, still 1s cooldown.
  */
 public class WindChargeResetHandler {
 
     private static final float MIN_DOWN_PITCH = 50.0f;
-    private static final long RESET_COOLDOWN_MS = 1000L; // 1s — balanced
+    private static final long RESET_COOLDOWN_MS = 1000L;
 
     private static final Map<UUID, Long> lastReset = new HashMap<>();
 
@@ -54,9 +53,8 @@ public class WindChargeResetHandler {
             return InteractionResult.PASS;
         }
 
-        // Light stall — kills fall speed briefly, does not hover
-        var motion = player.getDeltaMovement();
-        player.setDeltaMovement(motion.x * 0.15, 0.04, motion.z * 0.15);
+        // A little stronger: kill horizontal more, small upward hold
+        player.setDeltaMovement(0.0, 0.12, 0.0);
         serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(player));
         lastReset.put(player.getUUID(), now);
         serverPlayer.sendSystemMessage(Component.literal("§b§lWIND CHARGE RESET"), true);
