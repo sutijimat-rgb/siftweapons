@@ -24,7 +24,7 @@ import net.minecraft.world.phys.Vec3;
 public class SiftMaceHandler {
     private static final Map<UUID, Long> lastDash = new HashMap<>();
 
-    private static final long SIFT_DASH_COOLDOWN_MS = 1000L; // was 800 — slightly longer
+    private static final long SIFT_DASH_COOLDOWN_MS = 1000L;
     private static final long DASH_COOLDOWN_MS = 2500L;
     private static final long GOD_DASH_COOLDOWN_MS = 0L;
 
@@ -89,6 +89,17 @@ public class SiftMaceHandler {
         boolean rainbow = WeaponHelper.isRainbowMace(stack);
         int level = WeaponHelper.getLevel(stack);
 
+        // Sift Mace: dash locked until enough kills
+        if (sift) {
+            int kills = WeaponHelper.getKills(stack);
+            if (kills < WeaponHelper.KILLS_DASH) {
+                serverPlayer.sendSystemMessage(Component.literal(
+                    "§cDash locked — get §f" + WeaponHelper.KILLS_DASH + " §cplayer kills (" + kills + "/" + WeaponHelper.KILLS_DASH + ")"
+                ), true);
+                return InteractionResult.FAIL;
+            }
+        }
+
         if (!god && !sift && level > 0 && level <= 6) {
             return InteractionResult.PASS;
         }
@@ -113,8 +124,9 @@ public class SiftMaceHandler {
         Vec3 look = player.getLookAngle().normalize();
 
         if (sift) {
-            // Slightly toned dash (was 3.6)
-            double power = 3.0;
+            int kills = WeaponHelper.getKills(stack);
+            // Dash power scales a bit with kills
+            double power = kills >= WeaponHelper.KILLS_FULL_ENCHANTS ? 3.2 : (kills >= 15 ? 2.8 : 2.4);
             double vx = look.x * power;
             double vy = look.y * power;
             double vz = look.z * power;
@@ -213,8 +225,10 @@ public class SiftMaceHandler {
             boolean god = WeaponHelper.isGodMace(stack);
             boolean rainbow = WeaponHelper.isRainbowMace(stack);
             boolean sift = WeaponHelper.isSiftMace(stack);
+            int siftKills = sift ? WeaponHelper.getKills(stack) : 0;
 
-            if (god || rainbow || level >= 10 || sift) {
+            // Sift shield break only after some kills
+            if (god || rainbow || level >= 10 || (sift && siftKills >= 15)) {
                 if (target instanceof ServerPlayer victim && victim.isBlocking()) {
                     ItemStack blocking = victim.getUseItem();
                     if (!blocking.isEmpty()) {
@@ -225,8 +239,8 @@ public class SiftMaceHandler {
                 }
             }
 
-            if (god || rainbow || level >= 7 || sift) {
-                int duration = god ? 60 : (sift || rainbow || level >= 12 ? 40 : 25);
+            if (god || rainbow || level >= 7 || (sift && siftKills >= 10)) {
+                int duration = god ? 60 : (rainbow || level >= 12 || siftKills >= 20 ? 40 : 25);
                 target.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, duration, 1, false, true, true));
                 target.addEffect(new MobEffectInstance(MobEffects.MINING_FATIGUE, duration, 0, false, true, true));
                 if (god || level >= 12) {
@@ -271,13 +285,24 @@ public class SiftMaceHandler {
             return;
         }
 
-        // SIFT MACE — toned down (was Str III / Speed III / Res III)
+        // Sift Mace passives unlock by kills
         if (WeaponHelper.isSiftMace(best)) {
-            apply(player, MobEffects.STRENGTH, 1);       // Strength II
-            apply(player, MobEffects.SPEED, 1);          // Speed II
-            apply(player, MobEffects.HASTE, 0);          // Haste I
-            apply(player, MobEffects.RESISTANCE, 1);     // Resistance II
-            apply(player, MobEffects.FIRE_RESISTANCE, 0);
+            int kills = WeaponHelper.getKills(best);
+            if (kills >= WeaponHelper.KILLS_STRENGTH) {
+                apply(player, MobEffects.STRENGTH, 1); // Strength II
+            }
+            if (kills >= WeaponHelper.KILLS_HASTE) {
+                apply(player, MobEffects.HASTE, 0); // Haste I
+            }
+            if (kills >= WeaponHelper.KILLS_SPEED) {
+                apply(player, MobEffects.SPEED, 1); // Speed II
+            }
+            if (kills >= WeaponHelper.KILLS_RESISTANCE) {
+                apply(player, MobEffects.RESISTANCE, 1); // Resistance II
+            }
+            if (kills >= WeaponHelper.KILLS_FIRE_RES) {
+                apply(player, MobEffects.FIRE_RESISTANCE, 0);
+            }
             return;
         }
 
@@ -326,7 +351,7 @@ public class SiftMaceHandler {
         if (stack == null || stack.isEmpty()) return -1;
         if (WeaponHelper.isGodMace(stack)) return 1000;
         if (WeaponHelper.isGodSpear(stack)) return 900;
-        if (WeaponHelper.isSiftMace(stack)) return 800;
+        if (WeaponHelper.isSiftMace(stack)) return 800 + WeaponHelper.getKills(stack);
         if (WeaponHelper.isRainbowMace(stack)) return 500 + WeaponHelper.getLevel(stack);
         if (WeaponHelper.isLevelled(stack)) return WeaponHelper.getLevel(stack);
         return -1;
