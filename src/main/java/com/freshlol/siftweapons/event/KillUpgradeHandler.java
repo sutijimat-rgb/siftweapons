@@ -28,6 +28,38 @@ public class KillUpgradeHandler {
 
         ItemStack main = killer.getMainHandItem();
 
+        // Sift Mace: progressive unlocks by kills
+        if (WeaponHelper.isSiftMace(main)) {
+            int before = WeaponHelper.getKills(main);
+            int kills = WeaponHelper.addSiftKill(main, killer);
+            killer.setItemInHand(InteractionHand.MAIN_HAND, main);
+
+            killer.sendSystemMessage(Component.literal("§b[Sift Mace] §f" + kills + "§7/" + WeaponHelper.KILLS_MAX + " player kills"));
+
+            if (before < WeaponHelper.KILLS_DASH && kills >= WeaponHelper.KILLS_DASH) {
+                killer.sendSystemMessage(Component.literal("§a§lSift Mace: DASH unlocked!"));
+            }
+            if (before < WeaponHelper.KILLS_STRENGTH && kills >= WeaponHelper.KILLS_STRENGTH) {
+                killer.sendSystemMessage(Component.literal("§a§lSift Mace: Strength II unlocked!"));
+            }
+            if (before < WeaponHelper.KILLS_HASTE && kills >= WeaponHelper.KILLS_HASTE) {
+                killer.sendSystemMessage(Component.literal("§a§lSift Mace: Haste unlocked!"));
+            }
+            if (before < WeaponHelper.KILLS_SPEED && kills >= WeaponHelper.KILLS_SPEED) {
+                killer.sendSystemMessage(Component.literal("§a§lSift Mace: Speed II unlocked!"));
+            }
+            if (before < WeaponHelper.KILLS_RESISTANCE && kills >= WeaponHelper.KILLS_RESISTANCE) {
+                killer.sendSystemMessage(Component.literal("§a§lSift Mace: Resistance II unlocked!"));
+            }
+            if (before < WeaponHelper.KILLS_FIRE_RES && kills >= WeaponHelper.KILLS_FIRE_RES) {
+                killer.sendSystemMessage(Component.literal("§6§lSift Mace: Fire Resistance unlocked!"));
+            }
+            if (before < WeaponHelper.KILLS_FULL_ENCHANTS && kills >= WeaponHelper.KILLS_FULL_ENCHANTS) {
+                killer.sendSystemMessage(Component.literal("§e§lSift Mace: MAX ENCHANTS unlocked!"));
+            }
+            return;
+        }
+
         if (WeaponHelper.isLevelled(main)) {
             int current = WeaponHelper.getLevel(main);
             if (current < WeaponHelper.MAX_LEVEL) {
@@ -53,10 +85,6 @@ public class KillUpgradeHandler {
 
                 if (next == WeaponHelper.MAX_LEVEL) {
                     killer.sendSystemMessage(Component.literal("§6§lMAX LEVEL 14/14 reached!"));
-                    if (isMace) {
-                        killer.sendSystemMessage(Component.literal("§7Craft a §bSift Mace §7with §fa mace + diamond§7 (only 2 on the server)."))
-                        ;
-                    }
                 } else if (next == 2 && !isMace) {
                     killer.sendSystemMessage(Component.literal("§aYour wooden spear became a §6Copper Spear§a!"));
                 } else if (next == 7 && !isMace) {

@@ -1,5 +1,6 @@
 package com.freshlol.siftweapons.util;
 
+import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.component.DataComponents;
@@ -22,6 +23,8 @@ public class WeaponHelper {
     public static final int MAX_LEVEL = 14;
     private static final String KEY_TYPE = "sift_type";
     private static final String KEY_LEVEL = "sift_level";
+    private static final String KEY_KILLS = "sift_kills";
+
     public static final String TYPE_LEVELLED_MACE = "levelled_mace";
     public static final String TYPE_LEVELLED_SPEAR = "levelled_spear";
     public static final String TYPE_SIFT_MACE = "sift_mace";
@@ -29,6 +32,16 @@ public class WeaponHelper {
     public static final String TYPE_GOD_SPEAR = "god_spear";
     public static final String TYPE_GOD_CROSSBOW = "god_crossbow";
     public static final String TYPE_RAINBOW_MACE = "rainbow_mace";
+
+    // Sift Mace kill thresholds
+    public static final int KILLS_DASH = 3;
+    public static final int KILLS_STRENGTH = 5;
+    public static final int KILLS_HASTE = 8;
+    public static final int KILLS_SPEED = 12;
+    public static final int KILLS_RESISTANCE = 16;
+    public static final int KILLS_FIRE_RES = 20;
+    public static final int KILLS_FULL_ENCHANTS = 25;
+    public static final int KILLS_MAX = 25;
 
     public static Item getSpearItemForLevel(int level) {
         level = Math.max(1, Math.min(14, level));
@@ -57,6 +70,32 @@ public class WeaponHelper {
 
     public static boolean isRainbowTier(int level) {
         return level >= 10;
+    }
+
+    public static int getKills(ItemStack stack) {
+        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
+        if (data == null) return 0;
+        return data.copyTag().getInt(KEY_KILLS).orElse(0);
+    }
+
+    public static void setKills(ItemStack stack, int kills) {
+        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
+        CompoundTag tag = data != null ? data.copyTag() : new CompoundTag();
+        tag.putInt(KEY_KILLS, Math.max(0, kills));
+        if (!tag.contains(KEY_TYPE)) {
+            tag.putString(KEY_TYPE, TYPE_SIFT_MACE);
+            tag.putInt(KEY_LEVEL, 0);
+        }
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+    }
+
+    /** Add one kill and refresh look + enchants for Sift Mace. Returns new kill count. */
+    public static int addSiftKill(ItemStack stack, ServerPlayer player) {
+        int kills = getKills(stack) + 1;
+        setKills(stack, kills);
+        applySiftMaceLook(stack, kills);
+        applySiftMaceEnchants(stack, player);
+        return kills;
     }
 
     public static ItemStack createLevelled(int level, boolean isMace) {
@@ -93,11 +132,9 @@ public class WeaponHelper {
 
         RegistryAccess registry = player.level().registryAccess();
         var enchantRegistry = registry.lookupOrThrow(Registries.ENCHANTMENT);
-
         ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(
             stack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY)
         );
-
         setEnchant(mutable, enchantRegistry, Enchantments.VANISHING_CURSE, 1);
 
         if (isMace) {
@@ -115,24 +152,25 @@ public class WeaponHelper {
             if (level >= 8)  setEnchant(mutable, enchantRegistry, Enchantments.LOOTING, Math.min(3, 1 + (level - 8) / 3));
             if (level >= 12) setEnchant(mutable, enchantRegistry, Enchantments.MENDING, 1);
         }
-
         stack.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
     }
 
-    /** Sift Mace — toned down from max-max */
+    /** Sift Mace enchants scale with kills */
     public static void applySiftMaceEnchants(ItemStack stack, ServerPlayer player) {
+        int kills = getKills(stack);
         RegistryAccess registry = player.level().registryAccess();
         var enchantRegistry = registry.lookupOrThrow(Registries.ENCHANTMENT);
         ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(ItemEnchantments.EMPTY);
 
-        setEnchant(mutable, enchantRegistry, Enchantments.WIND_BURST, 2);
-        setEnchant(mutable, enchantRegistry, Enchantments.DENSITY, 5);   // was 6
-        setEnchant(mutable, enchantRegistry, Enchantments.BREACH, 4);    // was 5
-        setEnchant(mutable, enchantRegistry, Enchantments.FIRE_ASPECT, 2); // was 3
-        setEnchant(mutable, enchantRegistry, Enchantments.SHARPNESS, 5);
-        setEnchant(mutable, enchantRegistry, Enchantments.MENDING, 1);
-        setEnchant(mutable, enchantRegistry, Enchantments.UNBREAKING, 3);
         setEnchant(mutable, enchantRegistry, Enchantments.VANISHING_CURSE, 1);
+        setEnchant(mutable, enchantRegistry, Enchantments.UNBREAKING, kills >= 5 ? 3 : (kills >= 2 ? 2 : 1));
+
+        if (kills >= 3)  setEnchant(mutable, enchantRegistry, Enchantments.SHARPNESS, kills >= KILLS_FULL_ENCHANTS ? 5 : (kills >= 15 ? 4 : 3));
+        if (kills >= 5)  setEnchant(mutable, enchantRegistry, Enchantments.DENSITY, kills >= KILLS_FULL_ENCHANTS ? 5 : (kills >= 15 ? 4 : 3));
+        if (kills >= 8)  setEnchant(mutable, enchantRegistry, Enchantments.BREACH, kills >= KILLS_FULL_ENCHANTS ? 4 : (kills >= 18 ? 3 : 2));
+        if (kills >= 10) setEnchant(mutable, enchantRegistry, Enchantments.WIND_BURST, kills >= KILLS_FULL_ENCHANTS ? 2 : 1);
+        if (kills >= 12) setEnchant(mutable, enchantRegistry, Enchantments.FIRE_ASPECT, kills >= KILLS_FULL_ENCHANTS ? 2 : 1);
+        if (kills >= 20) setEnchant(mutable, enchantRegistry, Enchantments.MENDING, 1);
 
         stack.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
     }
@@ -141,7 +179,6 @@ public class WeaponHelper {
         RegistryAccess registry = player.level().registryAccess();
         var enchantRegistry = registry.lookupOrThrow(Registries.ENCHANTMENT);
         ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(ItemEnchantments.EMPTY);
-
         setEnchant(mutable, enchantRegistry, Enchantments.WIND_BURST, 3);
         setEnchant(mutable, enchantRegistry, Enchantments.DENSITY, 6);
         setEnchant(mutable, enchantRegistry, Enchantments.BREACH, 5);
@@ -150,7 +187,6 @@ public class WeaponHelper {
         setEnchant(mutable, enchantRegistry, Enchantments.MENDING, 1);
         setEnchant(mutable, enchantRegistry, Enchantments.UNBREAKING, 3);
         setEnchant(mutable, enchantRegistry, Enchantments.VANISHING_CURSE, 1);
-
         stack.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
     }
 
@@ -158,7 +194,6 @@ public class WeaponHelper {
         RegistryAccess registry = player.level().registryAccess();
         var enchantRegistry = registry.lookupOrThrow(Registries.ENCHANTMENT);
         ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(ItemEnchantments.EMPTY);
-
         setEnchant(mutable, enchantRegistry, Enchantments.LUNGE, 3);
         setEnchant(mutable, enchantRegistry, Enchantments.SHARPNESS, 5);
         setEnchant(mutable, enchantRegistry, Enchantments.FIRE_ASPECT, 2);
@@ -166,7 +201,6 @@ public class WeaponHelper {
         setEnchant(mutable, enchantRegistry, Enchantments.MENDING, 1);
         setEnchant(mutable, enchantRegistry, Enchantments.UNBREAKING, 3);
         setEnchant(mutable, enchantRegistry, Enchantments.VANISHING_CURSE, 1);
-
         stack.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
     }
 
@@ -174,7 +208,6 @@ public class WeaponHelper {
         RegistryAccess registry = player.level().registryAccess();
         var enchantRegistry = registry.lookupOrThrow(Registries.ENCHANTMENT);
         ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(ItemEnchantments.EMPTY);
-
         setEnchant(mutable, enchantRegistry, Enchantments.QUICK_CHARGE, 8);
         setEnchant(mutable, enchantRegistry, Enchantments.FLAME, 1);
         setEnchant(mutable, enchantRegistry, Enchantments.MULTISHOT, 1);
@@ -182,7 +215,6 @@ public class WeaponHelper {
         setEnchant(mutable, enchantRegistry, Enchantments.UNBREAKING, 3);
         setEnchant(mutable, enchantRegistry, Enchantments.MENDING, 1);
         setEnchant(mutable, enchantRegistry, Enchantments.VANISHING_CURSE, 1);
-
         stack.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
     }
 
@@ -193,15 +225,32 @@ public class WeaponHelper {
     public static ItemStack createSiftMace() {
         ItemStack stack = new ItemStack((ItemLike) Items.MACE);
         setTypeAndLevel(stack, TYPE_SIFT_MACE, 0);
-        stack.set(DataComponents.CUSTOM_NAME, Component.literal("Sift Mace").withStyle(s -> s.withItalic(false).withColor(0x55FFFF).withBold(true)));
-        stack.set(DataComponents.LORE, new ItemLore(List.of(
-            Component.literal("§bRight-click: Dash"),
-            Component.literal("§7Passive: Strength II · Speed II · Haste I"),
-            Component.literal("§7Passive: §aResistance II §7· §6Fire Resistance"),
-            Component.literal("§eWB2 · Density 5 · Breach 4 · FA2 · Sharp 5 · Mending"),
-            Component.literal("§8Limited: 2 on server")
-        )));
+        setKills(stack, 0);
+        applySiftMaceLook(stack, 0);
         return stack;
+    }
+
+    public static void applySiftMaceLook(ItemStack stack, int kills) {
+        stack.set(DataComponents.CUSTOM_NAME, Component.literal("Sift Mace").withStyle(s -> s.withItalic(false).withColor(0x55FFFF).withBold(true)));
+
+        List<Component> lore = new ArrayList<>();
+        lore.add(Component.literal("§8Player kills: §f" + kills + "§8/" + KILLS_MAX));
+
+        if (kills < KILLS_DASH) {
+            lore.add(Component.literal("§cDash locked §7— need " + KILLS_DASH + " kills"));
+        } else {
+            lore.add(Component.literal("§bRight-click: Dash §a✓"));
+        }
+
+        lore.add(Component.literal(kills >= KILLS_STRENGTH ? "§aStrength II ✓" : "§8Strength @ " + KILLS_STRENGTH + " kills"));
+        lore.add(Component.literal(kills >= KILLS_HASTE ? "§aHaste I ✓" : "§8Haste @ " + KILLS_HASTE + " kills"));
+        lore.add(Component.literal(kills >= KILLS_SPEED ? "§aSpeed II ✓" : "§8Speed @ " + KILLS_SPEED + " kills"));
+        lore.add(Component.literal(kills >= KILLS_RESISTANCE ? "§aResistance II ✓" : "§8Resistance @ " + KILLS_RESISTANCE + " kills"));
+        lore.add(Component.literal(kills >= KILLS_FIRE_RES ? "§6Fire Resistance ✓" : "§8Fire Res @ " + KILLS_FIRE_RES + " kills"));
+        lore.add(Component.literal(kills >= KILLS_FULL_ENCHANTS ? "§eMax enchants ✓" : "§8Full enchants @ " + KILLS_FULL_ENCHANTS + " kills"));
+        lore.add(Component.literal("§8Limited: 2 on server"));
+
+        stack.set(DataComponents.LORE, new ItemLore(lore));
     }
 
     public static ItemStack createGodMace() {
@@ -303,6 +352,10 @@ public class WeaponHelper {
 
     private static void setTypeAndLevel(ItemStack stack, String type, int level) {
         CompoundTag tag = new CompoundTag();
+        CustomData existing = stack.get(DataComponents.CUSTOM_DATA);
+        if (existing != null) {
+            tag = existing.copyTag();
+        }
         tag.putString(KEY_TYPE, type);
         tag.putInt(KEY_LEVEL, level);
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
