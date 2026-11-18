@@ -119,15 +119,16 @@ public class WeaponHelper {
         stack.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
     }
 
+    /** Sift Mace — toned down from max-max */
     public static void applySiftMaceEnchants(ItemStack stack, ServerPlayer player) {
         RegistryAccess registry = player.level().registryAccess();
         var enchantRegistry = registry.lookupOrThrow(Registries.ENCHANTMENT);
         ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(ItemEnchantments.EMPTY);
 
         setEnchant(mutable, enchantRegistry, Enchantments.WIND_BURST, 2);
-        setEnchant(mutable, enchantRegistry, Enchantments.DENSITY, 6);
-        setEnchant(mutable, enchantRegistry, Enchantments.BREACH, 5);
-        setEnchant(mutable, enchantRegistry, Enchantments.FIRE_ASPECT, 3);
+        setEnchant(mutable, enchantRegistry, Enchantments.DENSITY, 5);   // was 6
+        setEnchant(mutable, enchantRegistry, Enchantments.BREACH, 4);    // was 5
+        setEnchant(mutable, enchantRegistry, Enchantments.FIRE_ASPECT, 2); // was 3
         setEnchant(mutable, enchantRegistry, Enchantments.SHARPNESS, 5);
         setEnchant(mutable, enchantRegistry, Enchantments.MENDING, 1);
         setEnchant(mutable, enchantRegistry, Enchantments.UNBREAKING, 3);
@@ -169,7 +170,6 @@ public class WeaponHelper {
         stack.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
     }
 
-    /** God Crossbow: Quick Charge 8, Flame, Multishot, Piercing 4, Unbreaking 3, Mending, Vanishing */
     public static void applyGodCrossbowEnchants(ItemStack stack, ServerPlayer player) {
         RegistryAccess registry = player.level().registryAccess();
         var enchantRegistry = registry.lookupOrThrow(Registries.ENCHANTMENT);
@@ -196,9 +196,9 @@ public class WeaponHelper {
         stack.set(DataComponents.CUSTOM_NAME, Component.literal("Sift Mace").withStyle(s -> s.withItalic(false).withColor(0x55FFFF).withBold(true)));
         stack.set(DataComponents.LORE, new ItemLore(List.of(
             Component.literal("§bRight-click: Dash"),
-            Component.literal("§7Passive: Strength III · Speed III · Haste II"),
-            Component.literal("§7Passive: §aResistance III §7· §6Fire Resistance"),
-            Component.literal("§eWB2 · Density 6 · Breach 5 · FA3 · Sharp 5 · Mending"),
+            Component.literal("§7Passive: Strength II · Speed II · Haste I"),
+            Component.literal("§7Passive: §aResistance II §7· §6Fire Resistance"),
+            Component.literal("§eWB2 · Density 5 · Breach 4 · FA2 · Sharp 5 · Mending"),
             Component.literal("§8Limited: 2 on server")
         )));
         return stack;

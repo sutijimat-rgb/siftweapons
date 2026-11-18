@@ -24,7 +24,7 @@ import net.minecraft.world.phys.Vec3;
 public class SiftMaceHandler {
     private static final Map<UUID, Long> lastDash = new HashMap<>();
 
-    private static final long SIFT_DASH_COOLDOWN_MS = 800L;
+    private static final long SIFT_DASH_COOLDOWN_MS = 1000L; // was 800 — slightly longer
     private static final long DASH_COOLDOWN_MS = 2500L;
     private static final long GOD_DASH_COOLDOWN_MS = 0L;
 
@@ -40,7 +40,6 @@ public class SiftMaceHandler {
         });
     }
 
-    /** Level 8+ levelled spear OR god spear in main hand → hunger does not drain */
     private static void applySpearHungerProtect(ServerPlayer player) {
         ItemStack main = player.getMainHandItem();
         boolean protect = false;
@@ -55,7 +54,6 @@ public class SiftMaceHandler {
 
         if (!protect) return;
 
-        // Keep hunger full while lunging / holding the spear
         var food = player.getFoodData();
         food.setSaturation(Math.max(food.getSaturationLevel(), 10.0f));
         if (food.getFoodLevel() < 20) {
@@ -78,7 +76,6 @@ public class SiftMaceHandler {
 
         ItemStack stack = player.getItemInHand(hand);
 
-        // Spears: never intercept use (vanilla combat)
         if (isSpearStack(stack)) {
             return InteractionResult.PASS;
         }
@@ -116,12 +113,13 @@ public class SiftMaceHandler {
         Vec3 look = player.getLookAngle().normalize();
 
         if (sift) {
-            double power = 3.6;
+            // Slightly toned dash (was 3.6)
+            double power = 3.0;
             double vx = look.x * power;
             double vy = look.y * power;
             double vz = look.z * power;
-            if (look.y < -0.35) vy *= 1.35;
-            else if (look.y > 0.35) vy *= 1.25;
+            if (look.y < -0.35) vy *= 1.25;
+            else if (look.y > 0.35) vy *= 1.15;
 
             player.setDeltaMovement(vx, vy, vz);
             serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(player));
@@ -231,12 +229,12 @@ public class SiftMaceHandler {
                 int duration = god ? 60 : (sift || rainbow || level >= 12 ? 40 : 25);
                 target.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, duration, 1, false, true, true));
                 target.addEffect(new MobEffectInstance(MobEffects.MINING_FATIGUE, duration, 0, false, true, true));
-                if (god || sift || level >= 12) {
+                if (god || level >= 12) {
                     target.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, duration / 2, 0, false, true, true));
                 }
             }
 
-            if (god || sift || level >= 11) {
+            if (god || level >= 11) {
                 Vec3 away = target.position().subtract(player.position()).normalize().scale(god ? 1.6 : 1.1);
                 target.setDeltaMovement(target.getDeltaMovement().add(away.x, 0.35, away.z));
                 if (target instanceof ServerPlayer tp) {
@@ -273,13 +271,13 @@ public class SiftMaceHandler {
             return;
         }
 
-        // SIFT MACE — Resistance III (amplifier 2) + Fire Resistance (forced every tick)
+        // SIFT MACE — toned down (was Str III / Speed III / Res III)
         if (WeaponHelper.isSiftMace(best)) {
-            apply(player, MobEffects.STRENGTH, 2);
-            apply(player, MobEffects.SPEED, 2);
-            apply(player, MobEffects.HASTE, 1);
-            apply(player, MobEffects.RESISTANCE, 2);      // Resistance III
-            apply(player, MobEffects.FIRE_RESISTANCE, 0); // Fire Resistance
+            apply(player, MobEffects.STRENGTH, 1);       // Strength II
+            apply(player, MobEffects.SPEED, 1);          // Speed II
+            apply(player, MobEffects.HASTE, 0);          // Haste I
+            apply(player, MobEffects.RESISTANCE, 1);     // Resistance II
+            apply(player, MobEffects.FIRE_RESISTANCE, 0);
             return;
         }
 
@@ -334,7 +332,6 @@ public class SiftMaceHandler {
         return -1;
     }
 
-    /** Ambient passives — longer duration so they never flicker off */
     private static void apply(ServerPlayer player, net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect, int amplifier) {
         player.addEffect(new MobEffectInstance(effect, 80, amplifier, true, true, true));
     }

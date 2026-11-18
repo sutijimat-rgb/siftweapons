@@ -27,7 +27,7 @@
           "italic": false
         },
         {
-          "text": "WB2 · Density 6 · Breach 5 · FA3 · Sharp 5 · Mending",
+          "text": "WB2 · Density 5 · Breach 4 · FA2 · Sharp 5 · Mending",
           "color": "yellow",
           "italic": false
         },
@@ -43,9 +43,9 @@
       },
       "minecraft:enchantments": {
         "minecraft:wind_burst": 2,
-        "minecraft:density": 6,
-        "minecraft:breach": 5,
-        "minecraft:fire_aspect": 3,
+        "minecraft:density": 5,
+        "minecraft:breach": 4,
+        "minecraft:fire_aspect": 2,
         "minecraft:sharpness": 5,
         "minecraft:mending": 1,
         "minecraft:unbreaking": 3,
