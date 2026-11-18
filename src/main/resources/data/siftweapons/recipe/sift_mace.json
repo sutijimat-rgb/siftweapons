@@ -2,14 +2,16 @@
   "type": "minecraft:crafting_shaped",
   "category": "equipment",
   "pattern": [
-    "D D",
-    "DMD",
-    "DND"
+    "DTD",
+    "NMN",
+    "BNB"
   ],
   "key": {
-    "D": "minecraft:diamond",
+    "D": "minecraft:diamond_block",
+    "T": "minecraft:totem_of_undying",
+    "N": "minecraft:netherite_block",
     "M": "minecraft:mace",
-    "N": "minecraft:netherite_ingot"
+    "B": "minecraft:netherite_ingot"
   },
   "result": {
     "id": "minecraft:mace",
@@ -22,13 +24,18 @@
       },
       "minecraft:lore": [
         {
-          "text": "Right-click: Dash",
-          "color": "aqua",
+          "text": "Kill players to unlock powers",
+          "color": "gray",
           "italic": false
         },
         {
-          "text": "WB2 · Density 5 · Breach 4 · FA2 · Sharp 5 · Mending",
-          "color": "yellow",
+          "text": "Player kills: 0/25",
+          "color": "dark_gray",
+          "italic": false
+        },
+        {
+          "text": "Dash locked — need 3 kills",
+          "color": "red",
           "italic": false
         },
         {
@@ -39,16 +46,11 @@
       ],
       "minecraft:custom_data": {
         "sift_type": "sift_mace",
-        "sift_level": 0
+        "sift_level": 0,
+        "sift_kills": 0
       },
       "minecraft:enchantments": {
-        "minecraft:wind_burst": 2,
-        "minecraft:density": 5,
-        "minecraft:breach": 4,
-        "minecraft:fire_aspect": 2,
-        "minecraft:sharpness": 5,
-        "minecraft:mending": 1,
-        "minecraft:unbreaking": 3,
+        "minecraft:unbreaking": 1,
         "minecraft:vanishing_curse": 1
       }
     }
