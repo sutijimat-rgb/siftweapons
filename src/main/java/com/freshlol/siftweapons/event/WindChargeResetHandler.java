@@ -15,8 +15,9 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 
 /**
- * Wind Charge Reset — a little stronger:
- * Mid-air + look down + throw → clearer stall, still 1s cooldown.
+ * Wind Charge Reset — much stronger stall.
+ * Mid-air + look down + throw → hard stop / pop up.
+ * 1s cooldown so hold-RMB cannot float forever.
  */
 public class WindChargeResetHandler {
 
@@ -53,8 +54,8 @@ public class WindChargeResetHandler {
             return InteractionResult.PASS;
         }
 
-        // A little stronger: kill horizontal more, small upward hold
-        player.setDeltaMovement(0.0, 0.12, 0.0);
+        // MUCH stronger: full velocity kill + solid upward pop
+        player.setDeltaMovement(0.0, 0.55, 0.0);
         serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(player));
         lastReset.put(player.getUUID(), now);
         serverPlayer.sendSystemMessage(Component.literal("§b§lWIND CHARGE RESET"), true);

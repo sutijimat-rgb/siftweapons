@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [" D ", "ICI", "III"],
+  "key": {
+    "D": "minecraft:orange_dye",
+    "I": "minecraft:iron_ingot",
+    "C": "minecraft:chest"
+  },
+  "result": { "id": "minecraft:orange_shulker_box", "count": 1 }
+}
