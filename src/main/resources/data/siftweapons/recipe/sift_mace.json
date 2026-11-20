@@ -1,6 +1,6 @@
 {
   "type": "minecraft:crafting_shaped",
-  "category": "equipment",
+  "category": "misc",
   "pattern": [
     "DTD",
     "NMN",
@@ -15,43 +15,12 @@
   },
   "result": {
     "id": "minecraft:mace",
+    "count": 1,
     "components": {
-      "minecraft:custom_name": {
-        "text": "Sift Mace",
-        "italic": false,
-        "color": "#55FFFF",
-        "bold": true
-      },
-      "minecraft:lore": [
-        {
-          "text": "Kill players to unlock powers",
-          "color": "gray",
-          "italic": false
-        },
-        {
-          "text": "Player kills: 0/25",
-          "color": "dark_gray",
-          "italic": false
-        },
-        {
-          "text": "Dash locked — need 3 kills",
-          "color": "red",
-          "italic": false
-        },
-        {
-          "text": "Limited: 2 on server",
-          "color": "dark_gray",
-          "italic": false
-        }
-      ],
       "minecraft:custom_data": {
         "sift_type": "sift_mace",
         "sift_level": 0,
         "sift_kills": 0
-      },
-      "minecraft:enchantments": {
-        "minecraft:unbreaking": 1,
-        "minecraft:vanishing_curse": 1
       }
     }
   }
