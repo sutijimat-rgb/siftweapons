@@ -43,7 +43,6 @@ public class WindChargeResetHandler {
             return InteractionResult.PASS;
         }
 
-        // Must look down
         if (player.getXRot() < MIN_DOWN_PITCH) {
             return InteractionResult.PASS;
         }
@@ -54,9 +53,8 @@ public class WindChargeResetHandler {
             return InteractionResult.PASS;
         }
 
-        // PURE STOP — no forward, no upward pop
+        // PURE STOP — zero all velocity, no pop
         player.setDeltaMovement(0.0, 0.0, 0.0);
-        player.hurtMarked = true;
         serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(player));
         lastReset.put(player.getUUID(), now);
         serverPlayer.sendSystemMessage(Component.literal("§b§lWIND CHARGE RESET"), true);
