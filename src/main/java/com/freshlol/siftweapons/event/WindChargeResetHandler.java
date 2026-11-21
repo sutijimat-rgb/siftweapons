@@ -15,13 +15,12 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 
 /**
- * Wind Charge Reset — pure momentum stop only.
- * Look down + mid-air + throw → velocity zeroed. No forward/up pop.
+ * Wind Charge Reset — pure stop, look-down only, 0.75s cooldown.
  */
 public class WindChargeResetHandler {
 
     private static final float MIN_DOWN_PITCH = 50.0f;
-    private static final long RESET_COOLDOWN_MS = 1000L;
+    private static final long RESET_COOLDOWN_MS = 750L; // 0.75 seconds
 
     private static final Map<UUID, Long> lastReset = new HashMap<>();
 
@@ -53,7 +52,7 @@ public class WindChargeResetHandler {
             return InteractionResult.PASS;
         }
 
-        // PURE STOP — zero all velocity, no pop
+        // Pure stop — no pop, no forward
         player.setDeltaMovement(0.0, 0.0, 0.0);
         serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(player));
         lastReset.put(player.getUUID(), now);
