@@ -15,12 +15,13 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 
 /**
- * Wind Charge Reset — much stronger stall.
- * Mid-air + look down + throw → hard stop / pop up.
- * 1s cooldown so hold-RMB cannot float forever.
+ * Wind Charge Reset — very strong, look-down only.
+ * Mid-air + pitch down + throw → hard momentum kill + solid pop.
+ * Not looking down = normal wind charge, no reset.
  */
 public class WindChargeResetHandler {
 
+    /** Must look clearly down (50°+ toward ground) */
     private static final float MIN_DOWN_PITCH = 50.0f;
     private static final long RESET_COOLDOWN_MS = 1000L;
 
@@ -40,10 +41,12 @@ public class WindChargeResetHandler {
             return InteractionResult.PASS;
         }
 
+        // Air only
         if (player.onGround() || player.isInWater() || player.onClimbable()) {
             return InteractionResult.PASS;
         }
 
+        // STRICT: not looking down → no reset at all
         if (player.getXRot() < MIN_DOWN_PITCH) {
             return InteractionResult.PASS;
         }
@@ -54,8 +57,8 @@ public class WindChargeResetHandler {
             return InteractionResult.PASS;
         }
 
-        // MUCH stronger: full velocity kill + solid upward pop
-        player.setDeltaMovement(0.0, 0.55, 0.0);
+        // Very strong: full stop + strong upward pop (not infinite float)
+        player.setDeltaMovement(0.0, 0.95, 0.0);
         serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(player));
         lastReset.put(player.getUUID(), now);
         serverPlayer.sendSystemMessage(Component.literal("§b§lWIND CHARGE RESET"), true);
