@@ -15,13 +15,11 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 
 /**
- * Wind Charge Reset — very strong, look-down only.
- * Mid-air + pitch down + throw → hard momentum kill + solid pop.
- * Not looking down = normal wind charge, no reset.
+ * Wind Charge Reset — pure momentum stop only.
+ * Look down + mid-air + throw → velocity zeroed. No forward/up pop.
  */
 public class WindChargeResetHandler {
 
-    /** Must look clearly down (50°+ toward ground) */
     private static final float MIN_DOWN_PITCH = 50.0f;
     private static final long RESET_COOLDOWN_MS = 1000L;
 
@@ -41,12 +39,11 @@ public class WindChargeResetHandler {
             return InteractionResult.PASS;
         }
 
-        // Air only
         if (player.onGround() || player.isInWater() || player.onClimbable()) {
             return InteractionResult.PASS;
         }
 
-        // STRICT: not looking down → no reset at all
+        // Must look down
         if (player.getXRot() < MIN_DOWN_PITCH) {
             return InteractionResult.PASS;
         }
@@ -57,8 +54,9 @@ public class WindChargeResetHandler {
             return InteractionResult.PASS;
         }
 
-        // Very strong: full stop + strong upward pop (not infinite float)
-        player.setDeltaMovement(0.0, 0.95, 0.0);
+        // PURE STOP — no forward, no upward pop
+        player.setDeltaMovement(0.0, 0.0, 0.0);
+        player.hurtMarked = true;
         serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(player));
         lastReset.put(player.getUUID(), now);
         serverPlayer.sendSystemMessage(Component.literal("§b§lWIND CHARGE RESET"), true);
