@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "NTN",
+    "DCD",
+    "NBN"
+  ],
+  "key": {
+    "N": "minecraft:netherite_ingot",
+    "T": "minecraft:totem_of_undying",
+    "D": "minecraft:diamond_block",
+    "C": "minecraft:crossbow",
+    "B": "minecraft:netherite_block"
+  },
+  "result": {
+    "id": "minecraft:crossbow",
+    "count": 1,
+    "components": {
+      "minecraft:custom_data": {
+        "sift_type": "orbital_cannon",
+        "sift_level": 0
+      }
+    }
+  }
+}

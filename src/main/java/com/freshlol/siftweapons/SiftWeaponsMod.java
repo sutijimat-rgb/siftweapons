@@ -3,6 +3,7 @@ package com.freshlol.siftweapons;
 import com.freshlol.siftweapons.command.SiftCommand;
 import com.freshlol.siftweapons.event.CraftSiftMaceHandler;
 import com.freshlol.siftweapons.event.KillUpgradeHandler;
+import com.freshlol.siftweapons.event.OrbitalCannonHandler;
 import com.freshlol.siftweapons.event.PlayerJoinHandler;
 import com.freshlol.siftweapons.event.PlayerRespawnHandler;
 import com.freshlol.siftweapons.event.SiftMaceHandler;
@@ -30,6 +31,7 @@ public class SiftWeaponsMod implements ModInitializer {
         SiftMaceHandler.register();
         WindChargeResetHandler.register();
         CraftSiftMaceHandler.register();
+        OrbitalCannonHandler.register();
 
         CommandRegistrationCallback.EVENT.register(SiftCommand::register);
 
