@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": ["NTN", "TRT", "NTN"],
+  "key": {
+    "T": "minecraft:tnt",
+    "R": "minecraft:fishing_rod",
+    "N": "minecraft:netherite_ingot"
+  },
+  "result": { "id": "minecraft:fishing_rod", "count": 1, "components": { "minecraft:custom_data": { "sift_type": "nuke_rod", "sift_level": 8 } } }
+}

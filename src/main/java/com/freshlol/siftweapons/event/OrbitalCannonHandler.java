@@ -5,29 +5,30 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Orbital Strike Cannon — Wemmbu-style stab shots (raycast, 26.3-safe).
- * RMB: hyper pierce stab line.
- * Look up + RMB: orbital strikes from above.
+ * Wemmbu-style Orbital rods (fishing rod):
+ * Stab Shot = vertical TNT column
+ * Nuke Shot = concentric TNT rings above target
+ * Levels 1-10 (5 = huge, 10 = max)
  */
 public class OrbitalCannonHandler {
 
-    private static final long SHOT_COOLDOWN_MS = 600L;
-    private static final long ORBITAL_COOLDOWN_MS = 3000L;
-    private static final Map<UUID, Long> lastShot = new HashMap<>();
-    private static final Map<UUID, Long> lastOrbital = new HashMap<>();
+    private static final Map<UUID, Long> lastFire = new HashMap<>();
 
     public static void register() {
         UseItemCallback.EVENT.register(OrbitalCannonHandler::onUse);
@@ -42,78 +43,105 @@ public class OrbitalCannonHandler {
         }
 
         ItemStack stack = player.getItemInHand(hand);
-        if (!WeaponHelper.isOrbitalCannon(stack)) {
-            return InteractionResult.PASS;
-        }
+        boolean stab = WeaponHelper.isStabRod(stack);
+        boolean nuke = WeaponHelper.isNukeRod(stack);
+        if (!stab && !nuke) return InteractionResult.PASS;
 
+        int level = Math.max(1, Math.min(10, WeaponHelper.getLevel(stack)));
+
+        // Cooldown scales with power (level 1 = 4s, level 5 = 8s, level 10 = 14s)
+        long cd = 3000L + level * 1000L;
         long now = System.currentTimeMillis();
-        float pitch = player.getXRot();
-
-        // Look steeply up → orbital strike from sky
-        if (pitch < -55.0f) {
-            Long lastO = lastOrbital.get(player.getUUID());
-            if (lastO != null && now - lastO < ORBITAL_COOLDOWN_MS) {
-                long left = ORBITAL_COOLDOWN_MS - (now - lastO);
-                serverPlayer.sendSystemMessage(Component.literal("§cOrbital on cooldown (" + String.format("%.1f", left / 1000.0) + "s)"), true);
-                return InteractionResult.FAIL;
-            }
-
-            Vec3 look = player.getLookAngle();
-            Vec3 focus = player.getEyePosition().add(look.scale(28.0));
-
-            // 5 vertical stab columns around the focus point
-            for (int i = 0; i < 5; i++) {
-                double ox = (serverLevel.getRandom().nextDouble() - 0.5) * 4.0;
-                double oz = (serverLevel.getRandom().nextDouble() - 0.5) * 4.0;
-                Vec3 top = new Vec3(focus.x + ox, focus.y + 30.0, focus.z + oz);
-                Vec3 bot = new Vec3(focus.x + ox, focus.y - 5.0, focus.z + oz);
-                damageAlongLine(serverLevel, player, top, bot, 9.0f, 0.9);
-            }
-
-            lastOrbital.put(player.getUUID(), now);
-            serverPlayer.sendSystemMessage(Component.literal("§5§lORBITAL STRIKE!"), true);
-            return InteractionResult.SUCCESS;
-        }
-
-        // Stab shot — pierce line along look
-        Long lastS = lastShot.get(player.getUUID());
-        if (lastS != null && now - lastS < SHOT_COOLDOWN_MS) {
+        Long last = lastFire.get(player.getUUID());
+        if (last != null && now - last < cd) {
+            double left = (cd - (now - last)) / 1000.0;
+            serverPlayer.sendSystemMessage(Component.literal("§cRod cooldown: " + String.format("%.1f", left) + "s"), true);
             return InteractionResult.FAIL;
         }
 
-        Vec3 start = player.getEyePosition();
-        Vec3 end = start.add(player.getLookAngle().normalize().scale(48.0));
-        int hit = damageAlongLine(serverLevel, player, start, end, 11.0f, 0.55);
-
-        lastShot.put(player.getUUID(), now);
-        if (hit > 0) {
-            serverPlayer.sendSystemMessage(Component.literal("§d§lSTAB SHOT! §7(" + hit + ")"), true);
-        } else {
-            serverPlayer.sendSystemMessage(Component.literal("§d§lSTAB SHOT!"), true);
+        // Target: block player is looking at (up to 96 blocks)
+        HitResult hit = player.pick(96.0, 0.0f, false);
+        if (hit.getType() != HitResult.Type.BLOCK) {
+            serverPlayer.sendSystemMessage(Component.literal("§cAim at a block (max 96 blocks)"), true);
+            return InteractionResult.FAIL;
         }
+
+        BlockPos target = ((BlockHitResult) hit).getBlockPos();
+        int tx = target.getX();
+        int ty = target.getY();
+        int tz = target.getZ();
+
+        if (stab) {
+            fireStab(serverLevel, serverPlayer, tx, ty, tz, level);
+            serverPlayer.sendSystemMessage(Component.literal("§d§lSTAB SHOT §5Lv" + level + "§d!"), true);
+        } else {
+            fireNuke(serverLevel, serverPlayer, tx, ty, tz, level);
+            serverPlayer.sendSystemMessage(Component.literal("§c§lNUKE SHOT §6Lv" + level + "§c!"), true);
+        }
+
+        lastFire.put(player.getUUID(), now);
+
+        // Consume one use of durability feel — optional break chance none, just fire
         return InteractionResult.SUCCESS;
     }
 
-    private static int damageAlongLine(ServerLevel level, Player attacker, Vec3 from, Vec3 to, float damage, double radius) {
-        Vec3 dir = to.subtract(from);
-        double len = dir.length();
-        if (len < 0.1) return 0;
-        dir = dir.normalize();
+    /** Vertical drill of TNT from sky down toward bedrock, stops at very resistant blocks */
+    private static void fireStab(ServerLevel level, ServerPlayer owner, int x, int y, int z, int rodLevel) {
+        // spacing: L1=4, L5=2, L10=1
+        int spacing = Math.max(1, 5 - rodLevel / 2);
+        // start height above target
+        int topY = Math.min(level.getMaxY() - 2, y + 40 + rodLevel * 8);
+        int bottomY = level.getMinY() + 1;
 
-        int hits = 0;
-        java.util.Set<UUID> already = new java.util.HashSet<>();
+        // How many charges roughly by level (L1~15, L5~80, L10~160)
+        int maxCharges = 10 + rodLevel * rodLevel * 1 + rodLevel * 6;
+        if (rodLevel >= 5) maxCharges += 30;
+        if (rodLevel >= 8) maxCharges += 40;
 
-        for (double d = 0.5; d < len; d += 0.45) {
-            Vec3 pos = from.add(dir.scale(d));
-            AABB box = new AABB(pos.x - radius, pos.y - radius, pos.z - radius,
-                                pos.x + radius, pos.y + radius, pos.z + radius);
-            for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, box, ent -> ent.isAlive() && ent != attacker)) {
-                if (already.contains(e.getUUID())) continue;
-                already.add(e.getUUID());
-                e.hurtServer(level, attacker.damageSources().playerAttack(attacker), damage);
-                hits++;
+        int fuseBase = Math.max(20, 60 - rodLevel * 3); // higher level = faster detonation cascade
+        int placed = 0;
+
+        for (int cy = topY; cy >= bottomY && placed < maxCharges; cy -= spacing) {
+            BlockPos pos = new BlockPos(x, cy, z);
+            BlockState state = level.getBlockState(pos);
+            // Stop at bedrock / barrier-like (very high resistance)
+            float resist = state.getBlock().getExplosionResistance();
+            if (resist >= 1200.0f) break;
+
+            spawnTnt(level, owner, x + 0.5, cy + 0.5, z + 0.5, fuseBase + (placed % 8));
+            placed++;
+        }
+    }
+
+    /** Concentric rings of TNT above target — L5 is huge, L10 is massive */
+    private static void fireNuke(ServerLevel level, ServerPlayer owner, int x, int y, int z, int rodLevel) {
+        int rings = Math.min(10, 1 + rodLevel);           // L1=2, L5=6, L10=10
+        int height = 48 + rodLevel * 4;                   // spawn height above target
+        int fuse = 70 + rodLevel * 2;
+
+        // center charge
+        spawnTnt(level, owner, x + 0.5, y + height, z + 0.5, fuse);
+
+        for (int r = 1; r <= rings; r++) {
+            double radius = 3.0 + r * (2.0 + rodLevel * 0.25); // spreads more at high level
+            // points on ring: more at higher level
+            int points = 6 + r * 2 + rodLevel;
+            if (rodLevel >= 5) points += 4;
+            if (rodLevel >= 8) points += 6;
+
+            for (int i = 0; i < points; i++) {
+                double angle = (Math.PI * 2 * i) / points + level.getRandom().nextDouble() * 0.15;
+                double ox = Math.cos(angle) * radius + (level.getRandom().nextDouble() - 0.5) * 0.4;
+                double oz = Math.sin(angle) * radius + (level.getRandom().nextDouble() - 0.5) * 0.4;
+                double oy = height + (level.getRandom().nextDouble() - 0.5) * 2.0;
+                spawnTnt(level, owner, x + 0.5 + ox, y + oy, z + 0.5 + oz, fuse + level.getRandom().nextInt(12));
             }
         }
-        return hits;
+    }
+
+    private static void spawnTnt(ServerLevel level, ServerPlayer owner, double x, double y, double z, int fuse) {
+        PrimedTnt tnt = new PrimedTnt(level, x, y, z, owner);
+        tnt.setFuse(Math.max(10, fuse));
+        level.addFreshEntity(tnt);
     }
 }

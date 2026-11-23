@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": ["GTG", "TRT", "GTG"],
+  "key": {
+    "T": "minecraft:tnt",
+    "R": "minecraft:fishing_rod",
+    "G": "minecraft:fire_charge"
+  },
+  "result": { "id": "minecraft:fishing_rod", "count": 1, "components": { "minecraft:custom_data": { "sift_type": "nuke_rod", "sift_level": 5 } } }
+}
