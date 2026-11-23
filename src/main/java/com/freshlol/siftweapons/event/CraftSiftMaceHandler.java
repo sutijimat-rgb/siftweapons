@@ -1,12 +1,12 @@
 package com.freshlol.siftweapons.event;
 
 import com.freshlol.siftweapons.util.WeaponHelper;
+import com.freshlol.siftweapons.util.WeaponHelperRods;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
-/** Refresh crafted Sift Mace / Orbital Cannon display */
 public class CraftSiftMaceHandler {
 
     public static void register() {
@@ -30,12 +30,8 @@ public class CraftSiftMaceHandler {
                 }
             }
 
-            if (stack.is(Items.CROSSBOW) && WeaponHelper.isOrbitalCannon(stack)) {
-                if (stack.get(net.minecraft.core.component.DataComponents.CUSTOM_NAME) == null) {
-                    ItemStack proper = WeaponHelper.createOrbitalCannon();
-                    WeaponHelper.applyOrbitalCannonEnchants(proper, player);
-                    player.getInventory().setItem(i, proper);
-                }
+            if (stack.is(Items.FISHING_ROD) && (WeaponHelper.isStabRod(stack) || WeaponHelper.isNukeRod(stack))) {
+                WeaponHelperRods.refreshRodLook(stack);
             }
         }
     }
